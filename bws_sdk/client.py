@@ -4,17 +4,19 @@ from wsgiref import headers
 from pydantic import BaseModel
 from pydantic.type_adapter import P
 from .token import Auth
-from .bws_types import Reigon, BitwardenSecret
+from .bws_types import Region, BitwardenSecret
 from .crypto import EncryptedValue
 import requests
 from .errors import UnauthorisedError, SecretParseError
 
-class BWSSecretClient:
+
+class BWSecretClient:
     """
     BWSSecretClient provides methods to interact with the Bitwarden Secrets Manager API, enabling retrieval of secrets for a given access_token.
     """
-    def __init__(self, region: Reigon, access_token: str, state_file: str | None = None):
-        if not isinstance(region, Reigon):
+
+    def __init__(self, region: Region, access_token: str, state_file: str | None = None):
+        if not isinstance(region, Region):
             raise ValueError("Region must be an instance of Reigon")
         if not isinstance(access_token, str):
             raise ValueError("Access token must be a string")
@@ -24,7 +26,9 @@ class BWSSecretClient:
         self.region = region
         self.auth = Auth.from_token(access_token, region, state_file)
         self.session = requests.Session()
-        self.session.headers.update({"Authorization": f"Bearer {self.auth.bearer_token}", "User-Agent": "Bitwarden Rust-SDK", "Device-Type": "21"})
+        self.session.headers.update(
+            {"Authorization": f"Bearer {self.auth.bearer_token}", "User-Agent": "Bitwarden Rust-SDK", "Device-Type": "21"}
+        )
 
     def _decrypt_secret(self, secret: BitwardenSecret) -> BitwardenSecret:
         try:
@@ -58,9 +62,7 @@ class BWSSecretClient:
 
         if not isinstance(secret_id, str):
             raise ValueError("Secret ID must be a string")
-        response = self.session.get(
-            f"{self.region.api_url}/secrets/{secret_id}"
-        )
+        response = self.session.get(f"{self.region.api_url}/secrets/{secret_id}")
         if response.status_code == 401:
             raise UnauthorisedError(response.text)
         return self._parse_secret(response.json())

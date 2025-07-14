@@ -7,11 +7,10 @@ from urllib.parse import urlencode
 from pydantic import BaseModel
 import base64
 import requests
-from .bws_types import Reigon
+from .bws_types import Region
 from .crypto import SymetricCryptoKey, EncryptedValue
 import jwt
 from .errors import InvalidTokenError, UnauthorisedError
-
 
 
 class ClientToken:
@@ -49,7 +48,9 @@ class IdentityRequest(BaseModel):
 
 
 class Auth:
-    def __init__(self, client_token: ClientToken, org_enc_key: bytes, bearer_token: str, region: Reigon, state_file: str | None = None):
+    def __init__(
+        self, client_token: ClientToken, org_enc_key: bytes, bearer_token: str, region: Region, state_file: str | None = None
+    ):
         self.state_file = Path(state_file) if state_file else None
         self.region = region
         self.client_token = client_token
@@ -79,7 +80,7 @@ class Auth:
         return self.oauth_jwt["payload"]["organization"]
 
     @staticmethod
-    def _identity_request(client_token: ClientToken, region: Reigon):
+    def _identity_request(client_token: ClientToken, region: Region):
         headers = {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json", "Device-Type": "21"}
 
         identity_request = IdentityRequest(client_id=client_token.access_token_id, client_secret=client_token.client_secret)
@@ -95,7 +96,7 @@ class Auth:
         return response_data["encrypted_payload"], response_data["access_token"]
 
     @classmethod
-    def from_token(cls, token_str: str, region: Reigon, state_file_path: str | None = None):
+    def from_token(cls, token_str: str, region: Region, state_file_path: str | None = None):
         client_token = ClientToken.from_str(token_str)
         if state_file_path:
             state_file = Path(state_file_path)
@@ -113,4 +114,10 @@ class Auth:
         enc_key_b64 = json.loads(encrypted_payload)["encryptionKey"]
         org_enc_key = base64.b64decode(enc_key_b64)
 
-        return cls(client_token=client_token, org_enc_key=org_enc_key, bearer_token=access_token, region=region, state_file=state_file_path)
+        return cls(
+            client_token=client_token,
+            org_enc_key=org_enc_key,
+            bearer_token=access_token,
+            region=region,
+            state_file=state_file_path,
+        )
