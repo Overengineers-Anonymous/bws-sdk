@@ -31,18 +31,18 @@ poetry add bws-sdk
 ## Quick Start
 
 ```python
-from bws_sdk import BWSSecretClient, Reigon
+from bws_sdk import BWSecretClient, Region
 from datetime import datetime
 
 # Define the Bitwarden region
-region = Reigon(
+region = Region(
     api_url="https://api.bitwarden.com",
     identity_url="https://identity.bitwarden.com"
 )
 
 # Create a client instance with your access token
 # Optionally provide a state file path for token persistence
-client = BWSSecretClient(
+client = BWSecretClient(
     region=region,
     access_token="your-access-token",
     state_file="./path/to/state.file"  # Optional
@@ -62,17 +62,17 @@ for secret in updated_secrets:
 
 ## API Reference
 
-### `BWSSecretClient`
+### `BWSecretClient`
 
 The main client class for interacting with the Bitwarden Secrets Manager API.
 
 #### Constructor
 
 ```python
-BWSSecretClient(region: Reigon, access_token: str, state_file: str | None = None)
+BWSecretClient(region: Region, access_token: str, state_file: str | None = None)
 ```
 
-- `region`: A `Reigon` object specifying the API endpoints
+- `region`: A `Region` object specifying the API endpoints
 - `access_token`: Your Bitwarden access token
 - `state_file`: Optional path to a file for persisting authentication state
 
@@ -83,12 +83,12 @@ BWSSecretClient(region: Reigon, access_token: str, state_file: str | None = None
 
 > **Note**: The SDK currently only supports decryption of secrets. Methods for creating and encrypting new secrets are planned for future releases.
 
-### `Reigon`
+### `Region`
 
 A class representing a Bitwarden region configuration.
 
 ```python
-Reigon(api_url: str, identity_url: str)
+Region(api_url: str, identity_url: str)
 ```
 
 - `api_url`: The base URL for the region's API endpoint
@@ -107,19 +107,19 @@ Reigon(api_url: str, identity_url: str)
 
 ```python
 import os
-from bws_sdk import BWSSecretClient, Reigon
+from bws_sdk import BWSecretClient, Region
 
 # Get access token from environment variable
 access_token = os.environ.get("BITWARDEN_ACCESS_TOKEN")
 
 # Define the region
-region = Reigon(
+region = Region(
     api_url="https://api.bitwarden.com",
     identity_url="https://identity.bitwarden.com"
 )
 
 # Create the client
-client = BWSSecretClient(region, access_token)
+client = BWSecretClient(region, access_token)
 
 # Retrieve a secret
 secret = client.get_by_id(os.environ.get("SECRET_ID"))
@@ -129,15 +129,15 @@ print(f"Retrieved secret: {secret.key}")
 ### Error Handling
 
 ```python
-from bws_sdk import BWSSecretClient, Reigon, UnauthorisedError, SecretParseError
+from bws_sdk import BWSecretClient, Region, UnauthorisedError, SecretParseError
 
-region = Reigon(
+region = Region(
     api_url="https://api.bitwarden.com",
     identity_url="https://identity.bitwarden.com"
 )
 
 try:
-    client = BWSSecretClient(region, "your-access-token")
+    client = BWSecretClient(region, "your-access-token")
     secret = client.get_by_id("your-secret-id")
     print(f"Secret retrieved: {secret.key}")
 except UnauthorisedError:
@@ -155,12 +155,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Contact
-
-- Maintainer: rippleFCL
-- Email: github@ripple.contact
-- Organization: Overengineers-Anonymous
 
 ## References
 
