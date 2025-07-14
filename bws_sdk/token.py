@@ -1,3 +1,4 @@
+import datetime
 import json
 from pathlib import Path
 from re import S
@@ -48,7 +49,9 @@ class IdentityRequest(BaseModel):
 
 
 class Auth:
-    def __init__(self, client_token: ClientToken, org_enc_key: bytes, bearer_token: str):
+    def __init__(self, client_token: ClientToken, org_enc_key: bytes, bearer_token: str, region: Reigon, state_file: str | None = None):
+        self.state_file = Path(state_file) if state_file else None
+        self.region = region
         self.client_token = client_token
         self.org_enc_key = SymetricCryptoKey(org_enc_key)
         self._bearer_token = bearer_token
@@ -62,6 +65,13 @@ class Auth:
 
     @property
     def bearer_token(self) -> str:
+        expiry = datetime.datetime.fromtimestamp(self.oauth_jwt["payload"]["exp"], tz=datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.timezone.utc)
+        if expiry < now - datetime.timedelta(seconds=20):
+            _, self._bearer_token = self._identity_request(self.client_token, self.region)
+            if self.state_file:
+                with open(self.state_file, "w") as f:
+                    f.write(f"{self._bearer_token}|{self.org_enc_key.to_base64()}")
         return self._bearer_token
 
     @property
@@ -81,7 +91,7 @@ class Auth:
         )
         if response.status_code == 401:
             raise UnauthorisedError(response.text)
-        response_data = json.loads(response.text)
+        response_data = response.json()
         return response_data["encrypted_payload"], response_data["access_token"]
 
     @classmethod
@@ -103,4 +113,4 @@ class Auth:
         enc_key_b64 = json.loads(encrypted_payload)["encryptionKey"]
         org_enc_key = base64.b64decode(enc_key_b64)
 
-        return cls(client_token=client_token, org_enc_key=org_enc_key, bearer_token=access_token)
+        return cls(client_token=client_token, org_enc_key=org_enc_key, bearer_token=access_token, region=region, state_file=state_file_path)
