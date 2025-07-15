@@ -1,13 +1,12 @@
 from datetime import datetime
 from typing import Any
-from wsgiref import headers
-from pydantic import BaseModel
-from pydantic.type_adapter import P
-from .token import Auth
-from .bws_types import Region, BitwardenSecret
-from .crypto import EncryptedValue
+
 import requests
-from .errors import UnauthorisedError, SecretParseError, ApiError
+
+from .bws_types import BitwardenSecret, Region
+from .crypto import EncryptedValue
+from .errors import ApiError, SecretParseError, UnauthorisedError
+from .token import Auth
 
 
 class BWSecretClient:

@@ -1,16 +1,16 @@
+import base64
 import datetime
 import json
 from pathlib import Path
-from re import S
-from typing import Any
 from urllib.parse import urlencode
-from pydantic import BaseModel
-import base64
-import requests
-from .bws_types import Region
-from .crypto import SymetricCryptoKey, EncryptedValue
+
 import jwt
-from .errors import InvalidTokenError, UnauthorisedError, ApiError
+import requests
+from pydantic import BaseModel
+
+from .bws_types import Region
+from .crypto import EncryptedValue, SymetricCryptoKey
+from .errors import ApiError, InvalidTokenError, UnauthorisedError
 
 
 class ClientToken:
