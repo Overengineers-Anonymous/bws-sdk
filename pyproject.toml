@@ -1,6 +1,6 @@
 [project]
 name = "bws-sdk"
-version = "0.1.1"
+version = "0.1.2"
 description = "pure python implimentation of the bw secrets api"
 authors = [
     {name = "rippleFCL",email = "github@ripple.contact"}
