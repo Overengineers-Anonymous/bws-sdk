@@ -90,8 +90,9 @@ class BWSecretClient:
         )
         if response.status_code == 401:
             raise UnauthorisedError(response.text)
-        unc_secrets = response.json().get("secrets", {}).get("data", [])
+        unc_secrets = response.json().get("secrets", {})
         decrypted_secrets = []
-        for secret in unc_secrets:
-            decrypted_secrets.append(self._parse_secret(secret))
+        if unc_secrets:
+            for secret in unc_secrets.get("data", []):
+                decrypted_secrets.append(self._parse_secret(secret))
         return decrypted_secrets
