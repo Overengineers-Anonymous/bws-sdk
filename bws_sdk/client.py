@@ -7,7 +7,7 @@ from .token import Auth
 from .bws_types import Region, BitwardenSecret
 from .crypto import EncryptedValue
 import requests
-from .errors import UnauthorisedError, SecretParseError
+from .errors import UnauthorisedError, SecretParseError, ApiError
 
 
 class BWSecretClient:
@@ -65,6 +65,8 @@ class BWSecretClient:
         response = self.session.get(f"{self.region.api_url}/secrets/{secret_id}")
         if response.status_code == 401:
             raise UnauthorisedError(response.text)
+        if response.status_code != 200:
+            raise ApiError(f"Failed to retrieve secret: {response.status_code} {response.text}")
         return self._parse_secret(response.json())
 
     def sync(self, last_synced_date: datetime) -> list[BitwardenSecret]:
@@ -90,6 +92,8 @@ class BWSecretClient:
         )
         if response.status_code == 401:
             raise UnauthorisedError(response.text)
+        if response.status_code != 200:
+            raise ApiError(f"Failed to retrieve secret: {response.status_code} {response.text}")
         unc_secrets = response.json().get("secrets", {})
         decrypted_secrets = []
         if unc_secrets:

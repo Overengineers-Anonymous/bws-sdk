@@ -10,7 +10,7 @@ import requests
 from .bws_types import Region
 from .crypto import SymetricCryptoKey, EncryptedValue
 import jwt
-from .errors import InvalidTokenError, UnauthorisedError
+from .errors import InvalidTokenError, UnauthorisedError, ApiError
 
 
 class ClientToken:
@@ -92,6 +92,9 @@ class Auth:
         )
         if response.status_code == 401:
             raise UnauthorisedError(response.text)
+        if response.status_code != 200:
+            raise ApiError(f"Failed to retrieve secret: {response.status_code} {response.text}")
+        response.raise_for_status()
         response_data = response.json()
         return response_data["encrypted_payload"], response_data["access_token"]
 
