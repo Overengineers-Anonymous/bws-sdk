@@ -7,3 +7,9 @@ class HmacError(Exception): ...
 class SecretParseError(Exception): ...
 
 class ApiError(Exception): ...
+
+class InvalidEncryptedFormat(Exception):
+    """Raised when decryption fails due to an invalid key or corrupted data."""
+    def __init__(self, message: str = "Decryption failed due to an invalid key or corrupted data."):
+        super().__init__(message)
+        self.message = message

@@ -1,14 +1,16 @@
 import base64
 import hashlib
 import hmac
+import logging
 from enum import Enum
 
 from cryptography.hazmat.primitives import hashes, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
 
-from .errors import HmacError
+from .errors import HmacError, InvalidEncryptedFormat
 
+logger = logging.getLogger(__name__)
 
 class SymetricCryptoKey:
     def __init__(self, key: bytes):
@@ -98,7 +100,11 @@ class EncryptedValue:
 
     @classmethod
     def from_str(cls, encrypted_str: str):
-        algo, iv, data, mac = cls.decode(encrypted_str)
+        try:
+            algo, iv, data, mac = cls.decode(encrypted_str)
+        except ValueError as e:
+            logger.debug("Failed to decode encrypted string: %s", encrypted_str)
+            raise InvalidEncryptedFormat("Invalid encrypted format") from e
         return cls(algo=algo, iv=base64.b64decode(iv), data=base64.b64decode(data), mac=base64.b64decode(mac))
 
     def generate_mac(self, key: bytes) -> bytes:
