@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.4] - 2025-07-17
+### :sparkles: New Features
+- [`2397274`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/2397274e7cf43fd47504ca189b41f003c84b54ac) - added better error loging when receiving invalid identity responses *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+
+
 ## [v0.1.3] - 2025-07-15
 ### :wrench: Chores
 - [`f9fcd4e`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/f9fcd4e476a68de39ab069b46ed56ababd6fb84f) - formatting *(commit by [@rippleFCL](https://github.com/rippleFCL))*
@@ -30,3 +35,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.1.1]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v0.1.0...v0.1.1
 [v0.1.2]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v0.1.1...v0.1.2
 [v0.1.3]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v0.1.2...v0.1.3
+[v0.1.4]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v0.1.3...v0.1.4
