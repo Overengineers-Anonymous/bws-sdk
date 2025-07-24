@@ -8,7 +8,11 @@ from cryptography.hazmat.primitives import hashes, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
 
-from .errors import HmacError, InvalidEncryptedFormat
+class HmacError(Exception): ...
+
+class InvalidEncryptedFormat(Exception): ...
+
+class InvalidEncryptionKeyError(Exception): ...
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +25,7 @@ class SymetricCryptoKey:
             self.key = key[:16]
             self.mac_key = key[16:32]
         else:
-            raise ValueError("Key must be 64 bytes long")
+            raise InvalidEncryptionKeyError("Key must be 64 or 32 bytes long")
 
     @classmethod
     def derive_symkey(cls, secret: bytes, name: str, info: str | None = None):
@@ -64,11 +68,10 @@ class SymetricCryptoKey:
 
         return cls.derive_symkey(encryption_key, "accesstoken", "sm-access-token")
 
-    def decrypt(self, data: bytes) -> bytes:
-        # Implement decryption logic here
-        cipher = Cipher(algorithms.AES(self.mac_key), modes.CBC(self.key))
-        decryptor = cipher.decryptor()
-        return decryptor.update(data) + decryptor.finalize()
+    def __eq__(self, other):
+        if not isinstance(other, SymetricCryptoKey):
+            raise ValueError("Comparison is only supported between SymetricCryptoKey instances")
+        return self.key == other.key and self.mac_key == other.mac_key
 
     def to_base64(self) -> str:
         return base64.b64encode(self.key + self.mac_key).decode("utf-8")
@@ -79,22 +82,36 @@ class AlgoEnum(Enum):
 
 class EncryptedValue:
     def __init__(self, algo: AlgoEnum, iv: bytes, data: bytes, mac: bytes):
+        if len(iv) != 16:
+            raise ValueError("IV must be 16 bytes long")
+        if len(data) == 0:
+            raise ValueError("Data cannot be empty")
+        if len(mac) != 32:
+            raise ValueError("MAC must be 32 bytes long")
+        if algo not in AlgoEnum:
+            raise ValueError("Invalid algorithm specified")
         self.iv = iv
         self.data = data
         self.mac = mac
         self.algo = algo
 
     @staticmethod
-    def decode(encoded_data: str) -> tuple[AlgoEnum, str, str, str]:
-        parts= encoded_data.split('.', 1)
+    def decode_internal(data: str):
+        parts = data.split('|')
+        if len(parts) != 3:
+            raise ValueError("Invalid encrypted data format")
+        return parts[0], parts[1], parts[2]
+
+    @classmethod
+    def decode(cls, encoded_data: str) -> tuple[AlgoEnum, str, str, str]:
+        parts: list[str]= encoded_data.split('.', 1)
         if len(parts) == 2: # the encrypted data has a header
-            iv, data, mac = parts[1].split('|')
+            iv, data, mac = cls.decode_internal(parts[1])
             if parts[0] == AlgoEnum.AES128.value or parts[0] == AlgoEnum.AES256.value:
                 return (AlgoEnum(parts[0]), iv, data, mac)
         else:
-            iv, data, mac = encoded_data.split('|')
-            if len(parts) == 3:
-                return (AlgoEnum.AES128, iv, data, mac)
+            iv, data, mac = cls.decode_internal(encoded_data)
+            return (AlgoEnum.AES128, iv, data, mac)
 
         raise ValueError("Invalid encrypted data format")
 
@@ -102,10 +119,10 @@ class EncryptedValue:
     def from_str(cls, encrypted_str: str):
         try:
             algo, iv, data, mac = cls.decode(encrypted_str)
+            return cls(algo=algo, iv=base64.b64decode(iv), data=base64.b64decode(data), mac=base64.b64decode(mac))
         except ValueError as e:
             logger.debug("Failed to decode encrypted string: %s", encrypted_str)
             raise InvalidEncryptedFormat("Invalid encrypted format") from e
-        return cls(algo=algo, iv=base64.b64decode(iv), data=base64.b64decode(data), mac=base64.b64decode(mac))
 
     def generate_mac(self, key: bytes) -> bytes:
         hmac_obj = hmac.new(key, digestmod=hashlib.sha256)

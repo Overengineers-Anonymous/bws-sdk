@@ -5,9 +5,10 @@ import requests
 
 from .bws_types import BitwardenSecret, Region
 from .crypto import EncryptedValue
-from .errors import ApiError, SecretParseError, UnauthorisedError
+from .errors import ApiError, SecretParseError
 from .token import Auth
 
+class UnauthorisedError(Exception): ...
 
 class BWSecretClient:
     """

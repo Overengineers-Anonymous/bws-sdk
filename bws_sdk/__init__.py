@@ -1,12 +1,12 @@
 from .bws_types import BitwardenSecret, Region
-from .client import BWSecretClient
-from .errors import ApiError, HmacError, InvalidTokenError, SecretParseError, UnauthorisedError
+from .token import InvalidTokenError
+from .client import BWSecretClient, UnauthorisedError
+from .errors import ApiError,  SecretParseError
 
 __all__ = [
     "ApiError",
     "BWSecretClient",
     "BitwardenSecret",
-    "HmacError",
     "InvalidTokenError",
     "Region",
     "SecretParseError",

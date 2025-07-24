@@ -1,4 +1,5 @@
 import base64
+import binascii
 import datetime
 import json
 from pathlib import Path
@@ -9,11 +10,21 @@ import requests
 from pydantic import BaseModel
 
 from .bws_types import Region
-from .crypto import EncryptedValue, SymetricCryptoKey
-from .errors import ApiError, InvalidEncryptedFormat, InvalidTokenError, UnauthorisedError
+from .crypto import EncryptedValue, HmacError, InvalidEncryptedFormat, InvalidEncryptionKeyError, SymetricCryptoKey
+from .errors import ApiError
+
+
+class InvalidTokenError(Exception): ...
+
+
+class UnauthorisedToken(Exception): ...
 
 
 class InvalidStateFileError(Exception): ...
+
+
+class InvalidIdentityResponseError(Exception): ...
+
 
 class ClientToken:
     def __init__(self, access_token_id: str, client_secret: str, encryption_key: SymetricCryptoKey):
@@ -50,9 +61,7 @@ class IdentityRequest(BaseModel):
 
 
 class Auth:
-    def __init__(
-        self, client_token: ClientToken, region: Region, state_file: str | None = None
-    ):
+    def __init__(self, client_token: ClientToken, region: Region, state_file: str | None = None):
         self.state_file = Path(state_file) if state_file else None
         self.region = region
         self.client_token = client_token
@@ -62,7 +71,7 @@ class Auth:
         try:
             if self.state_file and self.state_file.exists():
                 return self._identity_from_state_file()
-        except (InvalidEncryptedFormat, InvalidStateFileError):
+        except (InvalidEncryptedFormat, InvalidStateFileError, HmacError, InvalidIdentityResponseError):
             pass
         self._identity_request()
 
@@ -70,7 +79,7 @@ class Auth:
     def bearer_token(self) -> str:
         expiry = datetime.datetime.fromtimestamp(self.oauth_jwt["payload"]["exp"], tz=datetime.timezone.utc)
         now = datetime.datetime.now(datetime.timezone.utc)
-        if expiry < now - datetime.timedelta(seconds=20):
+        if expiry < now - datetime.timedelta(seconds=60):
             self._identity_request()
 
         return self._bearer_token
@@ -82,7 +91,9 @@ class Auth:
     def _identity_request(self):
         headers = {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json", "Device-Type": "21"}
 
-        identity_request = IdentityRequest(client_id=self.client_token.access_token_id, client_secret=self.client_token.client_secret)
+        identity_request = IdentityRequest(
+            client_id=self.client_token.access_token_id, client_secret=self.client_token.client_secret
+        )
 
         response = requests.post(
             f"{self.region.identity_url}/connect/token",
@@ -90,18 +101,20 @@ class Auth:
             headers=headers,
         )
         if response.status_code == 401:
-            raise UnauthorisedError(response.text)
+            raise UnauthorisedToken(response.text)
         if response.status_code != 200:
             raise ApiError(f"Failed to retrieve secret: {response.status_code} {response.text}")
         response.raise_for_status()
         response_data = response.json()
-
-        if self.state_file:
-            with open(self.state_file, "w") as f:
-                f.write(f"{response_data['encrypted_payload']}|{response_data['access_token']}")
-
-        self._save_identity(response_data["encrypted_payload"], response_data["access_token"])
-
+        if response_data is None:
+            raise InvalidIdentityResponseError("BWS API returned an invalid identity response")
+        try:
+            if self.state_file:
+                with open(self.state_file, "w") as f:
+                    f.write(f"{response_data['encrypted_payload']}|{response_data['access_token']}")
+            self._save_identity(response_data["encrypted_payload"], response_data["access_token"])
+        except (KeyError, InvalidIdentityResponseError, InvalidEncryptedFormat, HmacError) as e:
+            raise InvalidIdentityResponseError("BWS API returned an invalid identity response") from e
 
     def _identity_from_state_file(self):
         if self.state_file:
@@ -142,16 +155,23 @@ class Auth:
             ValueError: If the encrypted data is invalid or cannot be decrypted.
         """
         if not encrypted_data:
-            raise ValueError("Encrypted data cannot be empty")
+            raise InvalidIdentityResponseError("Encrypted data cannot be empty")
 
         encrypted_payload = EncryptedValue.from_str(encrypted_data).decrypt(self.client_token.encryption_key)
-        enc_key_b64 = json.loads(encrypted_payload)["encryptionKey"]
-        return SymetricCryptoKey(base64.b64decode(enc_key_b64))
+        try:
+            enc_key_b64 = json.loads(encrypted_payload)["encryptionKey"]
+            return SymetricCryptoKey(base64.b64decode(enc_key_b64))
+        except (
+            KeyError,
+            json.JSONDecodeError,
+            binascii.Error,
+            InvalidEncryptionKeyError,
+        ):  # FIXME: Handle specific exceptions
+            raise InvalidIdentityResponseError("invalid encrypted payload format or decryption failed")
 
     @classmethod
     def from_token(cls, token_str: str, region: Region, state_file_path: str | None = None):
         client_token = ClientToken.from_str(token_str)
-
 
         return cls(
             client_token=client_token,
