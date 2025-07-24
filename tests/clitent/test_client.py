@@ -4,9 +4,9 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from bws_sdk.bws_types import BitwardenSecret, Region
-from bws_sdk.client import BWSecretClient, UnauthorisedError
+from bws_sdk.client import BWSecretClient, SecretParseError, UnauthorisedError
 from bws_sdk.crypto import SymetricCryptoKey
-from bws_sdk.errors import ApiError, SecretParseError
+from bws_sdk.errors import ApiError
 from bws_sdk.token import Auth
 
 

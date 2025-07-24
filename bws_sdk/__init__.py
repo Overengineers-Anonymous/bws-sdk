@@ -1,7 +1,13 @@
 from .bws_types import BitwardenSecret, Region
-from .client import BWSecretClient, UnauthorisedError
-from .errors import ApiError, SecretParseError
-from .token import InvalidTokenError
+from .client import (
+    APIRateLimitError,
+    BWSecretClient,
+    InvalidTokenError,
+    SecretNotFoundError,
+    SecretParseError,
+    UnauthorisedError,
+)
+from .errors import ApiError, SendRequestError
 
 __all__ = [
     "ApiError",
@@ -11,4 +17,7 @@ __all__ = [
     "Region",
     "SecretParseError",
     "UnauthorisedError",
+    "APIRateLimitError",
+    "SendRequestError",
+    "SecretNotFoundError",
 ]

@@ -17,7 +17,7 @@ from .crypto import (
     InvalidEncryptionKeyError,
     SymetricCryptoKey,
 )
-from .errors import ApiError
+from .errors import ApiError, SendRequestError
 
 
 class InvalidTokenError(Exception): ...
@@ -119,12 +119,14 @@ class Auth:
             client_id=self.client_token.access_token_id,
             client_secret=self.client_token.client_secret,
         )
-
-        response = requests.post(
-            f"{self.region.identity_url}/connect/token",
-            data=identity_request.to_query_string(),
-            headers=headers,
-        )
+        try:
+            response = requests.post(
+                f"{self.region.identity_url}/connect/token",
+                data=identity_request.to_query_string(),
+                headers=headers,
+            )
+        except requests.RequestException as e:
+            raise SendRequestError(f"Failed to send identity request: {e}")
         if response.status_code == 401:
             raise UnauthorisedToken(response.text)
         if response.status_code != 200:

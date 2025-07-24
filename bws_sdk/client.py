@@ -5,11 +5,23 @@ import requests
 
 from .bws_types import BitwardenSecret, Region
 from .crypto import EncryptedValue
-from .errors import ApiError, SecretParseError
-from .token import Auth
+from .errors import ApiError, SendRequestError
+from .token import Auth, InvalidIdentityResponseError
+
+
+class SecretParseError(Exception): ...
 
 
 class UnauthorisedError(Exception): ...
+
+
+class SecretNotFoundError(Exception): ...
+
+
+class APIRateLimitError(Exception): ...
+
+
+class InvalidTokenError(Exception): ...
 
 
 class BWSecretClient:
@@ -28,7 +40,10 @@ class BWSecretClient:
             raise ValueError("State file must be a string or None")
 
         self.region = region
-        self.auth = Auth.from_token(access_token, region, state_file)
+        try:
+            self.auth = Auth.from_token(access_token, region, state_file)
+        except InvalidIdentityResponseError as e:
+            raise InvalidTokenError("Invalid access token") from e
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -83,6 +98,26 @@ class BWSecretClient:
             )
         return self._parse_secret(response.json())
 
+    def raise_errors(self, response: requests.Response):
+        """
+        Raises appropriate exceptions based on the response status code.
+        Args:
+            response (requests.Response): The HTTP response object.
+        Raises:
+            UnauthorisedError: If the response status code is 401.
+            SecretNotFoundError: If the response status code is 404.
+            APIRateLimitError: If the response status code is 429.
+            SendRequestError: For other non-200 status codes.
+        """
+        if response.status_code == 401:
+            raise UnauthorisedError(response.text)
+        elif response.status_code == 404:
+            raise SecretNotFoundError("Secret not found")
+        elif response.status_code == 429:
+            raise APIRateLimitError("API rate limit exceeded")
+        elif response.status_code != 200:
+            raise ApiError(f"Unexpected error: {response.status_code} {response.text}")
+
     def sync(self, last_synced_date: datetime) -> list[BitwardenSecret]:
         """
         Synchronizes secrets from the Bitwarden server since the specified last synced date.
@@ -101,16 +136,14 @@ class BWSecretClient:
             raise ValueError("Last synced date must be a datetime object")
 
         lsd: str = last_synced_date.isoformat()
-        response = self.session.get(
-            f"{self.region.api_url}/organizations/{self.auth.org_id}/secrets/sync",
-            params={"lastSyncedDate": lsd},
-        )
-        if response.status_code == 401:
-            raise UnauthorisedError(response.text)
-        if response.status_code != 200:
-            raise ApiError(
-                f"Failed to retrieve secret: {response.status_code} {response.text}"
+        try:
+            response = self.session.get(
+                f"{self.region.api_url}/organizations/{self.auth.org_id}/secrets/sync",
+                params={"lastSyncedDate": lsd},
             )
+        except requests.RequestException as e:
+            raise SendRequestError(f"Failed to send sync request: {e}")
+        self.raise_errors(response)
         unc_secrets = response.json().get("secrets", {})
         decrypted_secrets = []
         if unc_secrets:
