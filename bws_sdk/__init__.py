@@ -1,7 +1,7 @@
 from .bws_types import BitwardenSecret, Region
-from .token import InvalidTokenError
 from .client import BWSecretClient, UnauthorisedError
-from .errors import ApiError,  SecretParseError
+from .errors import ApiError, SecretParseError
+from .token import InvalidTokenError
 
 __all__ = [
     "ApiError",

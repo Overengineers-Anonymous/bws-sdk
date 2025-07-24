@@ -13,7 +13,9 @@ from bws_sdk.token import Auth, ClientToken, InvalidIdentityResponseError
 @pytest.fixture
 def client_token():
     return ClientToken(
-        access_token_id="test_client_id", client_secret="test_client_secret", encryption_key=SymetricCryptoKey(b"0" * 64)
+        access_token_id="test_client_id",
+        client_secret="test_client_secret",
+        encryption_key=SymetricCryptoKey(b"0" * 64),
     )
 
 
@@ -24,10 +26,13 @@ def region():
         identity_url="https://identity.example.com",
     )
 
+
 def test_auth_initialization(client_token, region):
     with (
         patch("requests.post") as mock_post,
-        patch("bws_sdk.token.Auth._identity_from_state_file") as mock_identity_from_state_file,
+        patch(
+            "bws_sdk.token.Auth._identity_from_state_file"
+        ) as mock_identity_from_state_file,
         patch("builtins.open") as mock_open,
         patch("jwt.decode_complete") as mock_jwt_decode,
     ):
@@ -40,7 +45,12 @@ def test_auth_initialization(client_token, region):
         mock_post.return_value = mock_response
         mock_jwt_decode.return_value = {
             "payload": {
-                "exp": int((datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(seconds=3600*24)).timestamp()),
+                "exp": int(
+                    (
+                        datetime.datetime.now(datetime.timezone.utc)
+                        + datetime.timedelta(seconds=3600 * 24)
+                    ).timestamp()
+                ),
                 "organization": "test_org_id",
             }
         }
@@ -50,7 +60,11 @@ def test_auth_initialization(client_token, region):
         mock_post.assert_called_once_with(
             f"{region.identity_url}/connect/token",
             data="scope=api.secrets&grant_type=client_credentials&client_id=test_client_id&client_secret=test_client_secret",  # The actual data is not important for this test
-            headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json", "Device-Type": "21"},
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json",
+                "Device-Type": "21",
+            },
         )
 
         mock_open.assert_not_called()
@@ -62,12 +76,13 @@ def test_auth_initialization(client_token, region):
         assert auth.org_id == "test_org_id"
         assert auth.org_enc_key == SymetricCryptoKey(b"0" * 64)
 
+
 def test_auth_initialization_state_file(client_token, region):
     with (
         patch("requests.post") as mock_post,
         patch("bws_sdk.token.Auth._identity_request") as mock_identity_request,
         patch("jwt.decode_complete") as mock_jwt_decode,
-        tempfile.NamedTemporaryFile(mode='w', delete_on_close=False) as state_file
+        tempfile.NamedTemporaryFile(mode="w", delete_on_close=False) as state_file,
     ):
         state_file.write(
             "2.MDAwMDAwMDAwMDAwMDAwMA==|Rf21twoJicVfk3W2YblNBs7fZuQkVoJhcAv3r1TrXlKGXn4qf/djHhTGFzlDGqhzFArAFgFuWhRW5o/NSLVSr0olShtlp1K9te+7EHTu5+eOfMYExpRtuFmBrU1rp8IHlZvYmF0LKNryuOreCgg5hg==|dSaC3pJYzxNZNgEDx+rZFpV/MDlJNbQR31jkQWi5fXI=|test_access_token"
@@ -76,12 +91,19 @@ def test_auth_initialization_state_file(client_token, region):
 
         mock_jwt_decode.return_value = {
             "payload": {
-                "exp": int((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=3600 * 24)).timestamp()),
+                "exp": int(
+                    (
+                        datetime.datetime.now(datetime.timezone.utc)
+                        + datetime.timedelta(seconds=3600 * 24)
+                    ).timestamp()
+                ),
                 "organization": "test_org_id",
             }
         }
 
-        auth = Auth(client_token=client_token, region=region, state_file=state_file.name)
+        auth = Auth(
+            client_token=client_token, region=region, state_file=state_file.name
+        )
 
         mock_post.assert_not_called()
         mock_identity_request.assert_not_called()
@@ -119,7 +141,7 @@ def test_auth_initialization_state_file(client_token, region):
         ),
         pytest.param(
             "2.MDAwMDAwMDAwMDAwMDAwMA==|Rf21twoJicVfk3W2YblNBs7fZuQkVoJhcAv3r1TrXlKGXn4qf/djHhTGFzlDGqhzFArAFgFuWhRW5o/NSLVSr0olShtlp1K9te+7EHTu5+eOfMYExpRtuFmBrU1rp8IHlZvYmF0LKNryuOreCgg5hg==|iL+NlUtVhrz1lQdR1di5xLVQo6IHVRNgF7Fw04I/0X8=|test_access_token",
-            id="invalid_mac_sig"
+            id="invalid_mac_sig",
         ),
     ],
 )
@@ -141,17 +163,28 @@ def test_auth_initialization_state_file_invalid(client_token, region, invalid_da
         mock_post.return_value = mock_response
         mock_jwt_decode.return_value = {
             "payload": {
-                "exp": int((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=3600 * 24)).timestamp()),
+                "exp": int(
+                    (
+                        datetime.datetime.now(datetime.timezone.utc)
+                        + datetime.timedelta(seconds=3600 * 24)
+                    ).timestamp()
+                ),
                 "organization": "test_org_id",
             }
         }
 
-        auth = Auth(client_token=client_token, region=region, state_file=state_file.name)
+        auth = Auth(
+            client_token=client_token, region=region, state_file=state_file.name
+        )
 
         mock_post.assert_called_once_with(
             f"{region.identity_url}/connect/token",
             data="scope=api.secrets&grant_type=client_credentials&client_id=test_client_id&client_secret=test_client_secret",  # The actual data is not important for this test
-            headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json", "Device-Type": "21"},
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json",
+                "Device-Type": "21",
+            },
         )
 
         assert auth.state_file == Path(state_file.name)
@@ -160,6 +193,7 @@ def test_auth_initialization_state_file_invalid(client_token, region, invalid_da
         assert auth.bearer_token == "test_access_token"
         assert auth.org_id == "test_org_id"
         assert auth.org_enc_key == SymetricCryptoKey(b"0" * 64)
+
 
 @pytest.mark.parametrize(
     "invalid_data",
@@ -187,16 +221,17 @@ def test_auth_initialization_state_file_invalid(client_token, region, invalid_da
         ),
         pytest.param(
             "2.MDAwMDAwMDAwMDAwMDAwMA==|Rf21twoJicVfk3W2YblNBs7fZuQkVoJhcAv3r1TrXlKGXn4qf/djHhTGFzlDGqhzFArAFgFuWhRW5o/NSLVSr0olShtlp1K9te+7EHTu5+eOfMYExpRtuFmBrU1rp8IHlZvYmF0LKNryuOreCgg5hg==|iL+NlUtVhrz1lQdR1di5xLVQo6IHVRNgF7Fw04I/0X8=",
-            id="invalid_mac_sig"
+            id="invalid_mac_sig",
         ),
     ],
 )
-def test_auth_initialization_invalid_identity_response(client_token, region, invalid_data):
+def test_auth_initialization_invalid_identity_response(
+    client_token, region, invalid_data
+):
     with (
         patch("requests.post") as mock_post,
         patch("jwt.decode_complete") as mock_jwt_decode,
     ):
-
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -206,16 +241,28 @@ def test_auth_initialization_invalid_identity_response(client_token, region, inv
         mock_post.return_value = mock_response
         mock_jwt_decode.return_value = {
             "payload": {
-                "exp": int((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=3600 * 24)).timestamp()),
+                "exp": int(
+                    (
+                        datetime.datetime.now(datetime.timezone.utc)
+                        + datetime.timedelta(seconds=3600 * 24)
+                    ).timestamp()
+                ),
                 "organization": "test_org_id",
             }
         }
 
-        with pytest.raises(InvalidIdentityResponseError, match="BWS API returned an invalid identity response"):
+        with pytest.raises(
+            InvalidIdentityResponseError,
+            match="BWS API returned an invalid identity response",
+        ):
             Auth(client_token=client_token, region=region)
 
         mock_post.assert_called_once_with(
             f"{region.identity_url}/connect/token",
             data="scope=api.secrets&grant_type=client_credentials&client_id=test_client_id&client_secret=test_client_secret",  # The actual data is not important for this test
-            headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json", "Device-Type": "21"},
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json",
+                "Device-Type": "21",
+            },
         )

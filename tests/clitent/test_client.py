@@ -1,13 +1,13 @@
-from re import S
-from bws_sdk.client import BWSecretClient, UnauthorisedError
-import pytest
-from unittest.mock import MagicMock, patch, Mock
-from bws_sdk.token import Auth
-from bws_sdk.crypto import SymetricCryptoKey
-from bws_sdk.bws_types import Region, BitwardenSecret
-from bws_sdk.errors import ApiError, SecretParseError
 from datetime import datetime
-import requests
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
+from bws_sdk.bws_types import BitwardenSecret, Region
+from bws_sdk.client import BWSecretClient, UnauthorisedError
+from bws_sdk.crypto import SymetricCryptoKey
+from bws_sdk.errors import ApiError, SecretParseError
+from bws_sdk.token import Auth
 
 
 @pytest.fixture
@@ -169,7 +169,9 @@ def test_sync_success(mock_auth, region, mock_secret):
 def test_sync_invalid_date(region):
     with patch("bws_sdk.client.Auth.from_token"):
         client = BWSecretClient(region, "access_token")
-        with pytest.raises(ValueError, match="Last synced date must be a datetime object"):
+        with pytest.raises(
+            ValueError, match="Last synced date must be a datetime object"
+        ):
             client.sync("invalid_date")
 
 
@@ -222,7 +224,9 @@ def test_decrypt_secret_success(mock_encrypted_value, mock_auth, region, mock_se
 
 @patch("bws_sdk.client.Auth.from_token")
 @patch("bws_sdk.client.EncryptedValue")
-def test_decrypt_secret_unicode_error(mock_encrypted_value, mock_auth, region, mock_secret):
+def test_decrypt_secret_unicode_error(
+    mock_encrypted_value, mock_auth, region, mock_secret
+):
     mock_auth.return_value.org_enc_key = MagicMock()
     client = BWSecretClient(region, "access_token")
 

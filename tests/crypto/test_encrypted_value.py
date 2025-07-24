@@ -1,6 +1,12 @@
-from re import S
-from bws_sdk.crypto import HmacError, SymetricCryptoKey, EncryptedValue, AlgoEnum, InvalidEncryptedFormat
 import pytest
+
+from bws_sdk.crypto import (
+    AlgoEnum,
+    EncryptedValue,
+    HmacError,
+    InvalidEncryptedFormat,
+    SymetricCryptoKey,
+)
 
 
 def test_init():
@@ -65,18 +71,14 @@ def test_decrypt():
 
 
 def test_from_str():
-    enc_str = (
-        "2.MDAwMDAwMDAwMDAwMDAwMA==|MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTE=|MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI="
-    )
+    enc_str = "2.MDAwMDAwMDAwMDAwMDAwMA==|MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTE=|MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI="
     enc_data = EncryptedValue.from_str(enc_str)
     assert enc_data.algo == AlgoEnum.AES256
     assert enc_data.iv == b"0" * 16
     assert enc_data.data == b"1" * 32
     assert enc_data.mac == b"2" * 32
 
-    enc_str2 = (
-        "MDAwMDAwMDAwMDAwMDAwMA==|MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTE=|MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI="
-    )
+    enc_str2 = "MDAwMDAwMDAwMDAwMDAwMA==|MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTE=|MjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjI="
     enc_data2 = EncryptedValue.from_str(enc_str2)
     assert enc_data2.algo == AlgoEnum.AES128
     assert enc_data2.iv == b"0" * 16

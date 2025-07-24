@@ -8,14 +8,18 @@ from .crypto import EncryptedValue
 from .errors import ApiError, SecretParseError
 from .token import Auth
 
+
 class UnauthorisedError(Exception): ...
+
 
 class BWSecretClient:
     """
     BWSSecretClient provides methods to interact with the Bitwarden Secrets Manager API, enabling retrieval of secrets for a given access_token.
     """
 
-    def __init__(self, region: Region, access_token: str, state_file: str | None = None):
+    def __init__(
+        self, region: Region, access_token: str, state_file: str | None = None
+    ):
         if not isinstance(region, Region):
             raise ValueError("Region must be an instance of Reigon")
         if not isinstance(access_token, str):
@@ -27,7 +31,11 @@ class BWSecretClient:
         self.auth = Auth.from_token(access_token, region, state_file)
         self.session = requests.Session()
         self.session.headers.update(
-            {"Authorization": f"Bearer {self.auth.bearer_token}", "User-Agent": "Bitwarden Rust-SDK", "Device-Type": "21"}
+            {
+                "Authorization": f"Bearer {self.auth.bearer_token}",
+                "User-Agent": "Bitwarden Rust-SDK",
+                "Device-Type": "21",
+            }
         )
 
     def _decrypt_secret(self, secret: BitwardenSecret) -> BitwardenSecret:
@@ -35,8 +43,12 @@ class BWSecretClient:
             return BitwardenSecret(
                 id=secret.id,
                 organizationId=secret.organizationId,
-                key=EncryptedValue.from_str(secret.key).decrypt(self.auth.org_enc_key).decode("utf-8"),
-                value=EncryptedValue.from_str(secret.value).decrypt(self.auth.org_enc_key).decode("utf-8"),
+                key=EncryptedValue.from_str(secret.key)
+                .decrypt(self.auth.org_enc_key)
+                .decode("utf-8"),
+                value=EncryptedValue.from_str(secret.value)
+                .decrypt(self.auth.org_enc_key)
+                .decode("utf-8"),
                 creationDate=secret.creationDate,
                 revisionDate=secret.revisionDate,
             )
@@ -66,7 +78,9 @@ class BWSecretClient:
         if response.status_code == 401:
             raise UnauthorisedError(response.text)
         if response.status_code != 200:
-            raise ApiError(f"Failed to retrieve secret: {response.status_code} {response.text}")
+            raise ApiError(
+                f"Failed to retrieve secret: {response.status_code} {response.text}"
+            )
         return self._parse_secret(response.json())
 
     def sync(self, last_synced_date: datetime) -> list[BitwardenSecret]:
@@ -88,12 +102,15 @@ class BWSecretClient:
 
         lsd: str = last_synced_date.isoformat()
         response = self.session.get(
-            f"{self.region.api_url}/organizations/{self.auth.org_id}/secrets/sync", params={"lastSyncedDate": lsd}
+            f"{self.region.api_url}/organizations/{self.auth.org_id}/secrets/sync",
+            params={"lastSyncedDate": lsd},
         )
         if response.status_code == 401:
             raise UnauthorisedError(response.text)
         if response.status_code != 200:
-            raise ApiError(f"Failed to retrieve secret: {response.status_code} {response.text}")
+            raise ApiError(
+                f"Failed to retrieve secret: {response.status_code} {response.text}"
+            )
         unc_secrets = response.json().get("secrets", {})
         decrypted_secrets = []
         if unc_secrets:

@@ -8,13 +8,18 @@ from cryptography.hazmat.primitives import hashes, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
 
+
 class HmacError(Exception): ...
+
 
 class InvalidEncryptedFormat(Exception): ...
 
+
 class InvalidEncryptionKeyError(Exception): ...
 
+
 logger = logging.getLogger(__name__)
+
 
 class SymetricCryptoKey:
     def __init__(self, key: bytes):
@@ -70,15 +75,19 @@ class SymetricCryptoKey:
 
     def __eq__(self, other):
         if not isinstance(other, SymetricCryptoKey):
-            raise ValueError("Comparison is only supported between SymetricCryptoKey instances")
+            raise ValueError(
+                "Comparison is only supported between SymetricCryptoKey instances"
+            )
         return self.key == other.key and self.mac_key == other.mac_key
 
     def to_base64(self) -> str:
         return base64.b64encode(self.key + self.mac_key).decode("utf-8")
 
+
 class AlgoEnum(Enum):
     AES128 = "1"
     AES256 = "2"
+
 
 class EncryptedValue:
     def __init__(self, algo: AlgoEnum, iv: bytes, data: bytes, mac: bytes):
@@ -97,15 +106,15 @@ class EncryptedValue:
 
     @staticmethod
     def decode_internal(data: str):
-        parts = data.split('|')
+        parts = data.split("|")
         if len(parts) != 3:
             raise ValueError("Invalid encrypted data format")
         return parts[0], parts[1], parts[2]
 
     @classmethod
     def decode(cls, encoded_data: str) -> tuple[AlgoEnum, str, str, str]:
-        parts: list[str]= encoded_data.split('.', 1)
-        if len(parts) == 2: # the encrypted data has a header
+        parts: list[str] = encoded_data.split(".", 1)
+        if len(parts) == 2:  # the encrypted data has a header
             iv, data, mac = cls.decode_internal(parts[1])
             if parts[0] == AlgoEnum.AES128.value or parts[0] == AlgoEnum.AES256.value:
                 return (AlgoEnum(parts[0]), iv, data, mac)
@@ -119,7 +128,12 @@ class EncryptedValue:
     def from_str(cls, encrypted_str: str):
         try:
             algo, iv, data, mac = cls.decode(encrypted_str)
-            return cls(algo=algo, iv=base64.b64decode(iv), data=base64.b64decode(data), mac=base64.b64decode(mac))
+            return cls(
+                algo=algo,
+                iv=base64.b64decode(iv),
+                data=base64.b64decode(data),
+                mac=base64.b64decode(mac),
+            )
         except ValueError as e:
             logger.debug("Failed to decode encrypted string: %s", encrypted_str)
             raise InvalidEncryptedFormat("Invalid encrypted format") from e
@@ -140,7 +154,7 @@ class EncryptedValue:
     def _decrypt_aes(self, key: bytes) -> bytes:
         cipher = Cipher(algorithms.AES(key), modes.CBC(self.iv))
         decryptor = cipher.decryptor()
-        data =  decryptor.update(self.data) + decryptor.finalize()
+        data = decryptor.update(self.data) + decryptor.finalize()
         return self._unpad(data, key)
 
     def decrypt(self, key: SymetricCryptoKey) -> bytes:
