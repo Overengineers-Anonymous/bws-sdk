@@ -4,24 +4,33 @@ from typing import Any
 import requests
 
 from .bws_types import BitwardenSecret, Region
-from .crypto import EncryptedValue
+from .crypto import (
+    EncryptedValue,
+)
 from .errors import ApiError, SendRequestError
-from .token import Auth, InvalidIdentityResponseError
+from .token import (
+    Auth,
+    InvalidIdentityResponseError,
+    UnauthorisedToken,
+)
+from .token import (
+    InvalidTokenError as TokenInvalidTokenError,
+)
 
 
-class SecretParseError(Exception): ...
+class SecretParseError(ApiError): ...
 
 
-class UnauthorisedError(Exception): ...
+class UnauthorisedError(ApiError): ...
 
 
-class SecretNotFoundError(Exception): ...
+class SecretNotFoundError(ApiError): ...
 
 
-class APIRateLimitError(Exception): ...
+class APIRateLimitError(ApiError): ...
 
 
-class InvalidTokenError(Exception): ...
+class InvalidTokenError(ApiError): ...
 
 
 class BWSecretClient:
@@ -42,8 +51,14 @@ class BWSecretClient:
         self.region = region
         try:
             self.auth = Auth.from_token(access_token, region, state_file)
+        except TokenInvalidTokenError as e:
+            raise InvalidTokenError("Invalid access token format") from e
         except InvalidIdentityResponseError as e:
             raise InvalidTokenError("Invalid access token") from e
+        except UnauthorisedToken as e:
+            raise InvalidTokenError("Access token unauthorized") from e
+        except (SendRequestError, ApiError) as e:
+            raise InvalidTokenError("Failed to authenticate with token") from e
         self.session = requests.Session()
         self.session.headers.update(
             {
