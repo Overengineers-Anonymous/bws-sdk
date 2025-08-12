@@ -8,20 +8,12 @@ from cryptography.hazmat.primitives import hashes, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
 
-
-class HmacError(Exception): ...
-
-
-class InvalidEncryptedFormat(Exception): ...
-
-
-class InvalidEncryptionKeyError(Exception): ...
-
+from .errors import HmacError, InvalidEncryptedFormat, InvalidEncryptionKeyError
 
 logger = logging.getLogger(__name__)
 
 
-class SymetricCryptoKey:
+class SymmetricCryptoKey:
     def __init__(self, key: bytes):
         if len(key) == 64:
             self.key = key[:32]
@@ -46,7 +38,7 @@ class SymetricCryptoKey:
             info: Optional info for HKDF
 
         Returns:
-            A SymetricCryptoKey instance
+            A SymmetricCryptoKey instance
         """
         if len(secret) != 16:
             raise ValueError("Secret must be exactly 16 bytes")
@@ -74,9 +66,9 @@ class SymetricCryptoKey:
         return cls.derive_symkey(encryption_key, "accesstoken", "sm-access-token")
 
     def __eq__(self, other):
-        if not isinstance(other, SymetricCryptoKey):
+        if not isinstance(other, SymmetricCryptoKey):
             raise ValueError(
-                "Comparison is only supported between SymetricCryptoKey instances"
+                "Comparison is only supported between SymmetricCryptoKey instances"
             )
         return self.key == other.key and self.mac_key == other.mac_key
 
@@ -157,7 +149,7 @@ class EncryptedValue:
         data = decryptor.update(self.data) + decryptor.finalize()
         return self._unpad(data, key)
 
-    def decrypt(self, key: SymetricCryptoKey) -> bytes:
+    def decrypt(self, key: SymmetricCryptoKey) -> bytes:
         mac = self.generate_mac(key.mac_key)
         if not hmac.compare_digest(mac, self.mac):
             raise HmacError("MAC verification failed")

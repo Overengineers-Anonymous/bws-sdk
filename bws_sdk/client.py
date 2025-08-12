@@ -7,30 +7,15 @@ from .bws_types import BitwardenSecret, Region
 from .crypto import (
     EncryptedValue,
 )
-from .errors import ApiError, SendRequestError
-from .token import (
-    Auth,
-    InvalidIdentityResponseError,
-    UnauthorisedToken,
+from .errors import (
+    ApiError,
+    APIRateLimitError,
+    SecretNotFoundError,
+    SecretParseError,
+    SendRequestError,
+    UnauthorisedError,
 )
-from .token import (
-    InvalidTokenError as TokenInvalidTokenError,
-)
-
-
-class SecretParseError(ApiError): ...
-
-
-class UnauthorisedError(ApiError): ...
-
-
-class SecretNotFoundError(ApiError): ...
-
-
-class APIRateLimitError(ApiError): ...
-
-
-class InvalidTokenError(ApiError): ...
+from .token import Auth
 
 
 class BWSecretClient:
@@ -49,16 +34,7 @@ class BWSecretClient:
             raise ValueError("State file must be a string or None")
 
         self.region = region
-        try:
-            self.auth = Auth.from_token(access_token, region, state_file)
-        except TokenInvalidTokenError as e:
-            raise InvalidTokenError("Invalid access token format") from e
-        except InvalidIdentityResponseError as e:
-            raise InvalidTokenError("Invalid access token") from e
-        except UnauthorisedToken as e:
-            raise InvalidTokenError("Access token unauthorized") from e
-        except (SendRequestError, ApiError) as e:
-            raise InvalidTokenError("Failed to authenticate with token") from e
+        self.auth = Auth.from_token(access_token, region, state_file)
         self.session = requests.Session()
         self.session.headers.update(
             {

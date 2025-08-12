@@ -12,24 +12,18 @@ from pydantic import BaseModel
 from .bws_types import Region
 from .crypto import (
     EncryptedValue,
-    HmacError,
-    InvalidEncryptedFormat,
     InvalidEncryptionKeyError,
-    SymetricCryptoKey,
+    SymmetricCryptoKey,
 )
-from .errors import ApiError, SendRequestError
-
-
-class InvalidTokenError(Exception): ...
-
-
-class UnauthorisedToken(Exception): ...
-
-
-class InvalidStateFileError(Exception): ...
-
-
-class InvalidIdentityResponseError(Exception): ...
+from .errors import (
+    ApiError,
+    BWSSDKError,
+    InvalidIdentityResponseError,
+    InvalidStateFileError,
+    InvalidTokenError,
+    SendRequestError,
+    UnauthorisedToken,
+)
 
 
 class ClientToken:
@@ -37,7 +31,7 @@ class ClientToken:
         self,
         access_token_id: str,
         client_secret: str,
-        encryption_key: SymetricCryptoKey,
+        encryption_key: SymmetricCryptoKey,
     ):
         self.access_token_id = access_token_id
         self.client_secret = client_secret
@@ -57,7 +51,7 @@ class ClientToken:
         return cls(
             access_token_id=access_token_id,
             client_secret=client_secret,
-            encryption_key=SymetricCryptoKey.from_encryption_key(encryption_key),
+            encryption_key=SymmetricCryptoKey.from_encryption_key(encryption_key),
         )
 
 
@@ -84,12 +78,7 @@ class Auth:
         try:
             if self.state_file and self.state_file.exists():
                 return self._identity_from_state_file()
-        except (
-            InvalidEncryptedFormat,
-            InvalidStateFileError,
-            HmacError,
-            InvalidIdentityResponseError,
-        ):
+        except BWSSDKError:
             pass
         self._identity_request()
 
@@ -148,12 +137,7 @@ class Auth:
             self._save_identity(
                 response_data["encrypted_payload"], response_data["access_token"]
             )
-        except (
-            KeyError,
-            InvalidIdentityResponseError,
-            InvalidEncryptedFormat,
-            HmacError,
-        ) as e:
+        except BWSSDKError as e:
             raise InvalidIdentityResponseError(
                 "BWS API returned an invalid identity response"
             ) from e
@@ -186,7 +170,7 @@ class Auth:
             },  # FIXME: This should be verified with the public key from the region pyopenssl
         )
 
-    def _parse_enc_org_key(self, encrypted_data: str) -> SymetricCryptoKey:
+    def _parse_enc_org_key(self, encrypted_data: str) -> SymmetricCryptoKey:
         """
         Parses the encrypted organization encryption key from the provided encrypted data.
         Args:
@@ -204,7 +188,7 @@ class Auth:
         )
         try:
             enc_key_b64 = json.loads(encrypted_payload)["encryptionKey"]
-            return SymetricCryptoKey(base64.b64decode(enc_key_b64))
+            return SymmetricCryptoKey(base64.b64decode(enc_key_b64))
         except (
             KeyError,
             json.JSONDecodeError,

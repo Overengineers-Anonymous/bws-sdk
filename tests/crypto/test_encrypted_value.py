@@ -3,9 +3,11 @@ import pytest
 from bws_sdk.crypto import (
     AlgoEnum,
     EncryptedValue,
+    SymmetricCryptoKey,
+)
+from bws_sdk.errors import (
     HmacError,
     InvalidEncryptedFormat,
-    SymetricCryptoKey,
 )
 
 
@@ -63,7 +65,7 @@ def test_decrypt():
         b";\x8c\xe2\x0e?F\x01\xb6\x9a\xa2\x03\xbaT\x87<\xe0\xedw&%\x83\xbf\xd4\xf81I5R\xa8d!\xa9Z\x15\x8e\xc1S\xff\x8bP\x91\xd3\x83\xecbU\xaa\x99",
         b"s\x8e_n\xfbp\x0b\xd7\x9d\xf4\xed\xd2\xb3%\xd7u0\x03\xe1\xbb\x12>d?}\xc5\xb7\x8dr\xfejp",
     )
-    keys = SymetricCryptoKey(b"0" * 64)
+    keys = SymmetricCryptoKey(b"0" * 64)
     data = enc_data.decrypt(keys)
     assert data == b"0" * 32
     with pytest.raises(HmacError, match="MAC verification failed"):
