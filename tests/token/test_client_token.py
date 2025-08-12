@@ -1,11 +1,12 @@
 import pytest
 
-from bws_sdk.crypto import SymetricCryptoKey
-from bws_sdk.token import ClientToken, InvalidTokenError
+from bws_sdk.crypto import SymmetricCryptoKey
+from bws_sdk.errors import InvalidTokenError
+from bws_sdk.token import ClientToken
 
 
 def test_client_token():
-    sem_key = SymetricCryptoKey(b"0" * 64)
+    sem_key = SymmetricCryptoKey(b"0" * 64)
     token = ClientToken("test_client_id", "test_client_secret", sem_key)
     assert token.access_token_id == "test_client_id"
     assert token.client_secret == "test_client_secret"
@@ -17,7 +18,7 @@ def test_client_token_from_str():
     token = ClientToken.from_str(token_str)
     assert token.access_token_id == "test_client_id"
     assert token.client_secret == "test_client_secret"
-    assert token.encryption_key == SymetricCryptoKey(
+    assert token.encryption_key == SymmetricCryptoKey(
         b'\x8c\xb1\xd5\xc21j\x17 _\x9e\x1a\x08\x05r\x9b\xcdN\xe9\x1b;,7\x85Es2\x83\xcaA\x86\x03\xa3\xe6\x85\xd7\x16\x11\r\x131"\xc9*\xd7H\x99\xdc#G\xabL\t\x12]g{\x91Hq\x16>\xae\x86u'
     )
 

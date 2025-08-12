@@ -4,24 +4,18 @@ from typing import Any
 import requests
 
 from .bws_types import BitwardenSecret, Region
-from .crypto import EncryptedValue
-from .errors import ApiError, SendRequestError
-from .token import Auth, InvalidIdentityResponseError
-
-
-class SecretParseError(Exception): ...
-
-
-class UnauthorisedError(Exception): ...
-
-
-class SecretNotFoundError(Exception): ...
-
-
-class APIRateLimitError(Exception): ...
-
-
-class InvalidTokenError(Exception): ...
+from .crypto import (
+    EncryptedValue,
+)
+from .errors import (
+    ApiError,
+    APIRateLimitError,
+    SecretNotFoundError,
+    SecretParseError,
+    SendRequestError,
+    UnauthorisedError,
+)
+from .token import Auth
 
 
 class BWSecretClient:
@@ -40,10 +34,7 @@ class BWSecretClient:
             raise ValueError("State file must be a string or None")
 
         self.region = region
-        try:
-            self.auth = Auth.from_token(access_token, region, state_file)
-        except InvalidIdentityResponseError as e:
-            raise InvalidTokenError("Invalid access token") from e
+        self.auth = Auth.from_token(access_token, region, state_file)
         self.session = requests.Session()
         self.session.headers.update(
             {

@@ -1,26 +1,27 @@
 import pytest
 
-from bws_sdk.crypto import InvalidEncryptionKeyError, SymetricCryptoKey
+from bws_sdk.crypto import SymmetricCryptoKey
+from bws_sdk.errors import InvalidEncryptionKeyError
 
 
 def test_init():
-    key = SymetricCryptoKey(b"0" * 64)
+    key = SymmetricCryptoKey(b"0" * 64)
     assert key.key == b"0" * 32
     assert key.mac_key == b"0" * 32
 
-    key = SymetricCryptoKey(b"1" * 32)
+    key = SymmetricCryptoKey(b"1" * 32)
     assert key.key == b"1" * 16
     assert key.mac_key == b"1" * 16
 
     with pytest.raises(
         InvalidEncryptionKeyError, match="Key must be 64 or 32 bytes long"
     ):
-        SymetricCryptoKey(b"0" * 15)
+        SymmetricCryptoKey(b"0" * 15)
 
 
 def test_derive_symkey():
     secret = b"0" * 16
-    key = SymetricCryptoKey.derive_symkey(secret, "test_name", "test_info")
+    key = SymmetricCryptoKey.derive_symkey(secret, "test_name", "test_info")
     assert (
         key.key
         == b"\x0c\xd9\xb2\xc5\x9dlE\xde\xfb\xb3\xd3\x06>(k\xb2\x8c<{\xeb\xe8\xcd0\x8f\x7f2\x87f\xf3\xcb\x132"
@@ -31,12 +32,12 @@ def test_derive_symkey():
     )
 
     with pytest.raises(ValueError, match="Secret must be exactly 16 bytes"):
-        SymetricCryptoKey.derive_symkey(b"0" * 15, "test_name", "test_info")
+        SymmetricCryptoKey.derive_symkey(b"0" * 15, "test_name", "test_info")
 
 
 def test_from_encryption_key():
     encryption_key = b"0" * 16
-    key = SymetricCryptoKey.from_encryption_key(encryption_key)
+    key = SymmetricCryptoKey.from_encryption_key(encryption_key)
     assert (
         key.key
         == b"\x8c\xb1\xd5\xc21j\x17 _\x9e\x1a\x08\x05r\x9b\xcdN\xe9\x1b;,7\x85Es2\x83\xcaA\x86\x03\xa3"
@@ -47,26 +48,26 @@ def test_from_encryption_key():
     )
 
     with pytest.raises(ValueError, match="Invalid encryption key length"):
-        SymetricCryptoKey.from_encryption_key(b"0" * 15)
+        SymmetricCryptoKey.from_encryption_key(b"0" * 15)
 
 
 def test_eq():
-    key1 = SymetricCryptoKey(b"0" * 64)
-    key2 = SymetricCryptoKey(b"0" * 64)
-    key3 = SymetricCryptoKey(b"1" * 64)
+    key1 = SymmetricCryptoKey(b"0" * 64)
+    key2 = SymmetricCryptoKey(b"0" * 64)
+    key3 = SymmetricCryptoKey(b"1" * 64)
     assert key1 == key2
     assert key1 != key3
 
     with pytest.raises(
         ValueError,
-        match="Comparison is only supported between SymetricCryptoKey instances",
+        match="Comparison is only supported between SymmetricCryptoKey instances",
     ):
         key4 = "not_a_key"
         key1 == key4
 
 
 def test_to_base64():
-    key = SymetricCryptoKey(b"0" * 64)
+    key = SymmetricCryptoKey(b"0" * 64)
     base64_key = key.to_base64()
     assert (
         base64_key

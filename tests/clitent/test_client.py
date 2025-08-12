@@ -4,15 +4,15 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from bws_sdk.bws_types import BitwardenSecret, Region
-from bws_sdk.client import BWSecretClient, SecretParseError, UnauthorisedError
-from bws_sdk.crypto import SymetricCryptoKey
-from bws_sdk.errors import ApiError
+from bws_sdk.client import BWSecretClient
+from bws_sdk.crypto import SymmetricCryptoKey
+from bws_sdk.errors import ApiError, SecretParseError, UnauthorisedError
 from bws_sdk.token import Auth
 
 
 @pytest.fixture
 def symkey():
-    return MagicMock(spec=SymetricCryptoKey)
+    return MagicMock(spec=SymmetricCryptoKey)
 
 
 @pytest.fixture

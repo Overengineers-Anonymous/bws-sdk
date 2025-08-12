@@ -6,8 +6,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from bws_sdk.bws_types import Region
-from bws_sdk.crypto import SymetricCryptoKey
-from bws_sdk.token import Auth, ClientToken, InvalidIdentityResponseError
+from bws_sdk.crypto import SymmetricCryptoKey
+from bws_sdk.errors import InvalidIdentityResponseError
+from bws_sdk.token import Auth, ClientToken
 
 
 @pytest.fixture
@@ -15,7 +16,7 @@ def client_token():
     return ClientToken(
         access_token_id="test_client_id",
         client_secret="test_client_secret",
-        encryption_key=SymetricCryptoKey(b"0" * 64),
+        encryption_key=SymmetricCryptoKey(b"0" * 64),
     )
 
 
@@ -74,7 +75,7 @@ def test_auth_initialization(client_token, region):
         assert auth.client_token == client_token
         assert auth.bearer_token == "test_access_token"
         assert auth.org_id == "test_org_id"
-        assert auth.org_enc_key == SymetricCryptoKey(b"0" * 64)
+        assert auth.org_enc_key == SymmetricCryptoKey(b"0" * 64)
 
 
 def test_auth_initialization_state_file(client_token, region):
@@ -112,7 +113,7 @@ def test_auth_initialization_state_file(client_token, region):
         assert auth.client_token == client_token
         assert auth.bearer_token == "test_access_token"
         assert auth.org_id == "test_org_id"
-        assert auth.org_enc_key == SymetricCryptoKey(b"0" * 64)
+        assert auth.org_enc_key == SymmetricCryptoKey(b"0" * 64)
 
 
 @pytest.mark.parametrize(
@@ -192,7 +193,7 @@ def test_auth_initialization_state_file_invalid(client_token, region, invalid_da
         assert auth.client_token == client_token
         assert auth.bearer_token == "test_access_token"
         assert auth.org_id == "test_org_id"
-        assert auth.org_enc_key == SymetricCryptoKey(b"0" * 64)
+        assert auth.org_enc_key == SymmetricCryptoKey(b"0" * 64)
 
 
 @pytest.mark.parametrize(
