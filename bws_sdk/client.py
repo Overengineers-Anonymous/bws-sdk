@@ -1,3 +1,14 @@
+"""
+BWS API client for interacting with Bitwarden Secrets Manager.
+
+This module provides the main client class for interacting with the Bitwarden
+Secrets Manager API. It handles authentication, encryption/decryption of secrets,
+and provides methods for retrieving and synchronizing secrets.
+
+Classes:
+    BWSecretClient: Main client for BWS API interactions
+"""
+
 from datetime import datetime
 from typing import Any
 
@@ -20,12 +31,60 @@ from .token import Auth
 
 class BWSecretClient:
     """
-    BWSSecretClient provides methods to interact with the Bitwarden Secrets Manager API, enabling retrieval of secrets for a given access_token.
+    Client for interacting with the Bitwarden Secrets Manager API.
+
+    This class provides methods to retrieve and synchronize secrets from the
+    Bitwarden Secrets Manager. It handles authentication, automatic token refresh,
+    and encryption/decryption of secret data.
+
+    Attributes:
+        region (Region): The BWS region configuration
+        auth (Auth): Authentication handler
+        session (requests.Session): HTTP session for API requests
+
+    Example:
+        ```python
+        from bws_sdk import BWSecretClient, Region
+
+        region = Region(
+            api_url="https://api.bitwarden.com",
+            identity_url="https://identity.bitwarden.com"
+        )
+
+        client = BWSecretClient(
+            region=region,
+            access_token="your_access_token",
+            state_file="/path/to/state/file"  # optional
+        )
+
+        # Get a specific secret
+        secret = client.get_by_id("secret-uuid")
+
+        # Sync secrets since a specific date
+        from datetime import datetime
+        secrets = client.sync(datetime(2024, 1, 1))
+        ```
     """
 
     def __init__(
         self, region: Region, access_token: str, state_file: str | None = None
     ):
+        """
+        Initialize the BWSecretClient.
+
+        Args:
+            region (Region): The BWS region configuration
+            access_token (str): The BWS access token for authentication
+            state_file (str | None): Optional path to state file for token persistence
+
+        Raises:
+            ValueError: If any of the input parameters are of incorrect type
+            InvalidTokenError: If the access token format is invalid
+            BWSSDKError: If authentication fails during initialization
+            SendRequestError: If the initial authentication request fails
+            UnauthorisedToken: If the token is invalid or expired
+            ApiError: If the API returns an error during authentication
+        """
         if not isinstance(region, Region):
             raise ValueError("Region must be an instance of Reigon")
         if not isinstance(access_token, str):
@@ -45,6 +104,24 @@ class BWSecretClient:
         )
 
     def _decrypt_secret(self, secret: BitwardenSecret) -> BitwardenSecret:
+        """
+        Decrypt an encrypted BitwardenSecret.
+
+        Takes a BitwardenSecret with encrypted key and value fields and returns
+        a new BitwardenSecret with decrypted key and value fields.
+
+        Args:
+            secret (BitwardenSecret): The encrypted secret to decrypt
+
+        Returns:
+            BitwardenSecret: A new BitwardenSecret with decrypted key and value
+
+        Raises:
+            SecretParseError: If the decrypted data cannot be decoded as UTF-8
+            InvalidEncryptedFormat: If the encrypted data format is invalid
+            HmacError: If HMAC verification fails during decryption
+            InvalidEncryptionKeyError: If the organization encryption key is invalid
+        """
         try:
             return BitwardenSecret(
                 id=secret.id,
@@ -62,20 +139,56 @@ class BWSecretClient:
             raise SecretParseError("Failed to decode secret value or key") from e
 
     def _parse_secret(self, data: dict[str, Any]) -> BitwardenSecret:
+        """
+        Parse and decrypt a secret from API response data.
+
+        Validates the raw API response data into a BitwardenSecret model
+        and then decrypts the secret's key and value fields.
+
+        Args:
+            data (dict[str, Any]): Raw secret data from the API response
+
+        Returns:
+            BitwardenSecret: The parsed and decrypted secret
+
+        Raises:
+            ValidationError: If the data doesn't match the BitwardenSecret model
+            SecretParseError: If the secret cannot be decrypted or decoded
+            InvalidEncryptedFormat: If the encrypted data format is invalid
+            HmacError: If HMAC verification fails during decryption
+        """
         undec_secret = BitwardenSecret.model_validate(data)
         return self._decrypt_secret(undec_secret)
 
     def get_by_id(self, secret_id: str) -> BitwardenSecret:
         """
         Retrieve a secret by its unique identifier.
+
+        Makes an authenticated request to the BWS API to retrieve a specific secret
+        by its UUID. The returned secret will have its key and value automatically
+        decrypted.
+
         Args:
-            secret_id (str): The unique identifier of the secret to retrieve.
+            secret_id (str): The unique identifier (UUID) of the secret to retrieve
+
         Returns:
-            BitwardenSecret: The parsed and decrypted secret data.
+            BitwardenSecret: The retrieved and decrypted secret
+
         Raises:
-            ValueError: If the provided secret_id is not a string.
-            UnauthorisedError: If the request is unauthorized (HTTP 401).
-            SecretParseError: If a secret cannot be parsed or decrypted.
+            ValueError: If the provided secret_id is not a string
+            UnauthorisedError: If the request is unauthorized (HTTP 401)
+            ApiError: If the API returns a non-200 status code
+            SecretParseError: If the secret cannot be parsed or decrypted
+            SendRequestError: If the network request fails
+            InvalidEncryptedFormat: If the encrypted data format is invalid
+            HmacError: If HMAC verification fails during decryption
+
+        Example:
+            ```python
+            secret = client.get_by_id("550e8400-e29b-41d4-a716-446655440000")
+            print(f"Secret key: {secret.key}")
+            print(f"Secret value: {secret.value}")
+            ```
         """
 
         if not isinstance(secret_id, str):
@@ -91,14 +204,23 @@ class BWSecretClient:
 
     def raise_errors(self, response: requests.Response):
         """
-        Raises appropriate exceptions based on the response status code.
+        Raise appropriate exceptions based on HTTP response status codes.
+
+        Analyzes the HTTP response and raises specific BWS SDK exceptions
+        based on the status code to provide meaningful error handling.
+
         Args:
-            response (requests.Response): The HTTP response object.
+            response (requests.Response): The HTTP response object to analyze
+
         Raises:
-            UnauthorisedError: If the response status code is 401.
-            SecretNotFoundError: If the response status code is 404.
-            APIRateLimitError: If the response status code is 429.
-            SendRequestError: For other non-200 status codes.
+            UnauthorisedError: If the response status code is 401 (Unauthorized)
+            SecretNotFoundError: If the response status code is 404 (Not Found)
+            APIRateLimitError: If the response status code is 429 (Too Many Requests)
+            ApiError: For any other non-200 status codes
+
+        Note:
+            This method does not return anything when the status code is 200.
+            It only raises exceptions for error status codes.
         """
         if response.status_code == 401:
             raise UnauthorisedError(response.text)
@@ -111,16 +233,35 @@ class BWSecretClient:
 
     def sync(self, last_synced_date: datetime) -> list[BitwardenSecret]:
         """
-        Synchronizes secrets from the Bitwarden server since the specified last synced date.
+        Synchronize secrets from the Bitwarden server since a specified date.
+
+        Retrieves all secrets that have been created or modified since the provided
+        last synced date. This method is useful for keeping local secret caches
+        up to date with the server state.
+
         Args:
-            last_synced_date (datetime): The datetime object representing the last time secrets were synced.
+            last_synced_date (datetime): The datetime representing when secrets were last synced
+
         Returns:
-            list[BitwardenSecret]: The parsed and decrypted secrets data.
+            list[BitwardenSecret]: List of secrets created or modified since the last sync date
 
         Raises:
-            ValueError: If last_synced_date is not a datetime object.
-            UnauthorisedError: If the server returns a 401 Unauthorized response.
-            SecretParseError: If a secret cannot be parsed or decrypted.
+            ValueError: If last_synced_date is not a datetime object
+            SendRequestError: If the network request fails
+            UnauthorisedError: If the server returns a 401 Unauthorized response
+            ApiError: If the API returns a non-200 status code
+            SecretParseError: If any secret cannot be parsed or decrypted
+            InvalidEncryptedFormat: If any encrypted data format is invalid
+            HmacError: If HMAC verification fails during decryption
+
+        Example:
+            ```python
+            from datetime import datetime
+            last_sync = datetime(2024, 1, 1)
+            secrets = client.sync(last_sync)
+            for secret in secrets:
+                print(f"Secret: {secret.key} = {secret.value}")
+            ```
         """
 
         if not isinstance(last_synced_date, datetime):
