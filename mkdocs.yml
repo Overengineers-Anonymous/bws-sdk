@@ -1,7 +1,7 @@
 site_name: BWS SDK Documentation
 site_description: Pure Python implementation of the BW Secrets API
 site_author: rippleFCL
-site_url: https://overengineers-anonymous.github.io/bws-sdk/
+site_url: https://bws-sdk.netlify.app/
 
 repo_name: Overengineers-Anonymous/bws-sdk
 repo_url: https://github.com/Overengineers-Anonymous/bws-sdk
