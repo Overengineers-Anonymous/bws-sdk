@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bws-sdk"
-version = "0.1.4"
+version = "1.0.0"
 description = "pure python implimentation of the bw secrets api"
 authors = ["rippleFCL <github@ripple.contact>"]
 license = "MIT"
