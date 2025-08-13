@@ -72,7 +72,7 @@ class ClientToken:
         self.encryption_key = encryption_key
 
     @classmethod
-    def from_str(cls, token_str: str):
+    def from_str(cls, token_str: str) -> "ClientToken":
         """
         Create a ClientToken instance from a token string.
 
@@ -125,7 +125,7 @@ class IdentityRequest(BaseModel):
     client_id: str
     client_secret: str
 
-    def to_query_string(self):
+    def to_query_string(self) -> str:
         """
         Convert the identity request to a URL-encoded query string.
 
@@ -175,7 +175,7 @@ class Auth:
         self.client_token = client_token
         self._authenticate()
 
-    def _authenticate(self):
+    def _authenticate(self) -> None:
         """
         Perform initial authentication.
 
@@ -236,7 +236,7 @@ class Auth:
         """
         return self.oauth_jwt["payload"]["organization"]
 
-    def _identity_request(self):
+    def _identity_request(self) -> None:
         """
         Perform an identity request to obtain OAuth tokens.
 
@@ -293,7 +293,7 @@ class Auth:
                 "BWS API returned an invalid identity response"
             ) from e
 
-    def _identity_from_state_file(self):
+    def _identity_from_state_file(self) -> None:
         """
         Load authentication state from the state file.
 
@@ -318,7 +318,7 @@ class Auth:
         else:
             raise ValueError("State file path is not set")
 
-    def _save_identity(self, encrypted_data: str, access_token: str):
+    def _save_identity(self, encrypted_data: str, access_token: str) -> None:
         """
         Save the identity information and parse the organization encryption key.
 
@@ -387,7 +387,7 @@ class Auth:
     @classmethod
     def from_token(
         cls, token_str: str, region: Region, state_file_path: str | None = None
-    ):
+    ) -> "Auth":
         """
         Create an Auth instance from a token string.
 

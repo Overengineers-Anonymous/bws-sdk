@@ -66,7 +66,9 @@ class SymmetricCryptoKey:
             raise InvalidEncryptionKeyError("Key must be 64 or 32 bytes long")
 
     @classmethod
-    def derive_symkey(cls, secret: bytes, name: str, info: str | None = None):
+    def derive_symkey(
+        cls, secret: bytes, name: str, info: str | None = None
+    ) -> "SymmetricCryptoKey":
         """
         Derive a symmetric key using HMAC and HKDF-Expand.
 
@@ -111,7 +113,7 @@ class SymmetricCryptoKey:
         return cls(expanded_key)
 
     @classmethod
-    def from_encryption_key(cls, encryption_key: bytes):
+    def from_encryption_key(cls, encryption_key: bytes) -> "SymmetricCryptoKey":
         """
         Create a SymmetricCryptoKey from a BWS access token encryption key.
 
@@ -133,7 +135,7 @@ class SymmetricCryptoKey:
 
         return cls.derive_symkey(encryption_key, "accesstoken", "sm-access-token")
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """
         Check equality between SymmetricCryptoKey instances.
 
@@ -232,7 +234,7 @@ class EncryptedValue:
         self.algo = algo
 
     @staticmethod
-    def decode_internal(data: str):
+    def decode_internal(data: str) -> tuple[str, str, str]:
         """
         Parse the internal format of encrypted data.
 
@@ -287,7 +289,7 @@ class EncryptedValue:
         raise ValueError("Invalid encrypted data format")
 
     @classmethod
-    def from_str(cls, encrypted_str: str):
+    def from_str(cls, encrypted_str: str) -> "EncryptedValue":
         """
         Create an EncryptedValue from a Bitwarden encrypted string.
 

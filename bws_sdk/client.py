@@ -172,7 +172,7 @@ class BWSecretClient:
             )
         return self._parse_secret(response.json())
 
-    def raise_errors(self, response: requests.Response):
+    def raise_errors(self, response: requests.Response) -> None:
         """
         Raise appropriate exceptions based on HTTP response status codes.
 
