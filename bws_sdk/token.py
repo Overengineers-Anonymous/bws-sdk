@@ -35,7 +35,7 @@ from .errors import (
     InvalidStateFileError,
     InvalidTokenError,
     SendRequestError,
-    UnauthorisedToken,
+    UnauthorisedTokenError,
 )
 
 
@@ -165,10 +165,9 @@ class Auth:
 
         Raises:
             BWSSDKError: If authentication fails
-            InvalidStateFileError: If the state file format is invalid
             InvalidIdentityResponseError: If the identity response is invalid
             SendRequestError: If the network request fails
-            UnauthorisedToken: If the token is invalid or expired
+            UnauthorisedTokenError: If the token is invalid or expired
             ApiError: If the API returns an error response
         """
         self.state_file = Path(state_file) if state_file else None
@@ -188,7 +187,7 @@ class Auth:
             InvalidStateFileError: If the state file format is invalid
             InvalidIdentityResponseError: If the identity response is invalid
             SendRequestError: If the network request fails
-            UnauthorisedToken: If the token is invalid or expired
+            UnauthorisedTokenError: If the token is invalid or expired
             ApiError: If the API returns an error response
         """
         try:
@@ -212,7 +211,7 @@ class Auth:
         Raises:
             InvalidIdentityResponseError: If token refresh fails due to invalid response
             SendRequestError: If the network request for token refresh fails
-            UnauthorisedToken: If the token is invalid during refresh
+            UnauthorisedTokenError: If the token is invalid during refresh
             ApiError: If the API returns an error during refresh
         """
         expiry = datetime.datetime.fromtimestamp(
@@ -246,7 +245,7 @@ class Auth:
 
         Raises:
             SendRequestError: If the network request fails
-            UnauthorisedToken: If the client credentials are invalid (401 response)
+            UnauthorisedTokenError: If the client credentials are invalid (401 response)
             ApiError: If the API returns a non-200 status code
             InvalidIdentityResponseError: If the response format is invalid or missing required fields
         """
@@ -269,7 +268,7 @@ class Auth:
         except requests.RequestException as e:
             raise SendRequestError(f"Failed to send identity request: {e}")
         if response.status_code == 401:
-            raise UnauthorisedToken(response.text)
+            raise UnauthorisedTokenError(response.text)
         if response.status_code != 200:
             raise ApiError(
                 f"Failed to retrieve secret: {response.status_code} {response.text}"
@@ -380,7 +379,7 @@ class Auth:
             json.JSONDecodeError,
             binascii.Error,
             InvalidEncryptionKeyError,
-        ):  # FIXME: Handle specific exceptions
+        ):
             raise InvalidIdentityResponseError(
                 "invalid encrypted payload format or decryption failed"
             )
@@ -406,10 +405,9 @@ class Auth:
         Raises:
             InvalidTokenError: If the token version is unsupported or format is invalid
             BWSSDKError: If authentication fails during initialization
-            InvalidStateFileError: If the state file format is invalid
             InvalidIdentityResponseError: If the identity response is invalid
             SendRequestError: If the network request fails
-            UnauthorisedToken: If the token is invalid or expired
+            UnauthorisedTokenError: If the token is invalid or expired
             ApiError: If the API returns an error response
         """
         client_token = ClientToken.from_str(token_str)

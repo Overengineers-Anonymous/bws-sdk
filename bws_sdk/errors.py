@@ -15,7 +15,7 @@ Exception Hierarchy:
     │   └── APIRateLimitError
     ├── AuthError
     │   ├── InvalidTokenError
-    │   ├── UnauthorisedToken
+    │   ├── UnauthorisedTokenError
     │   ├── InvalidStateFileError
     │   └── InvalidIdentityResponseError
     └── CryptographyError
@@ -118,7 +118,7 @@ class InvalidTokenError(AuthError):
     """
 
 
-class UnauthorisedToken(AuthError):
+class UnauthorisedTokenError(AuthError):
     """
     Raised when a BWS access token is rejected by the identity service.
 

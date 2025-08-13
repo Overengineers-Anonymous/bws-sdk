@@ -40,22 +40,30 @@ from .client import BWSecretClient
 from .errors import (
     ApiError,
     APIRateLimitError,
+    AuthError,
+    BWSSDKError,
+    InvalidIdentityResponseError,
     InvalidTokenError,
     SecretNotFoundError,
     SecretParseError,
     SendRequestError,
     UnauthorisedError,
+    UnauthorisedTokenError,
 )
 
 __all__ = [
     "APIRateLimitError",
     "ApiError",
+    "AuthError",
+    "BWSSDKError",
     "BWSecretClient",
     "BitwardenSecret",
+    "InvalidIdentityResponseError",
     "InvalidTokenError",
     "Region",
     "SecretNotFoundError",
     "SecretParseError",
     "SendRequestError",
     "UnauthorisedError",
+    "UnauthorisedTokenError",
 ]

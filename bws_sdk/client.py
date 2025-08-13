@@ -21,6 +21,7 @@ from .crypto import (
 from .errors import (
     ApiError,
     APIRateLimitError,
+    CryptographyError,
     SecretNotFoundError,
     SecretParseError,
     SendRequestError,
@@ -41,29 +42,6 @@ class BWSecretClient:
         region (Region): The BWS region configuration
         auth (Auth): Authentication handler
         session (requests.Session): HTTP session for API requests
-
-    Example:
-        ```python
-        from bws_sdk import BWSecretClient, Region
-
-        region = Region(
-            api_url="https://api.bitwarden.com",
-            identity_url="https://identity.bitwarden.com"
-        )
-
-        client = BWSecretClient(
-            region=region,
-            access_token="your_access_token",
-            state_file="/path/to/state/file"  # optional
-        )
-
-        # Get a specific secret
-        secret = client.get_by_id("secret-uuid")
-
-        # Sync secrets since a specific date
-        from datetime import datetime
-        secrets = client.sync(datetime(2024, 1, 1))
-        ```
     """
 
     def __init__(
@@ -82,7 +60,7 @@ class BWSecretClient:
             InvalidTokenError: If the access token format is invalid
             BWSSDKError: If authentication fails during initialization
             SendRequestError: If the initial authentication request fails
-            UnauthorisedToken: If the token is invalid or expired
+            UnauthorisedTokenError: If the token is invalid or expired
             ApiError: If the API returns an error during authentication
         """
         if not isinstance(region, Region):
@@ -118,9 +96,6 @@ class BWSecretClient:
 
         Raises:
             SecretParseError: If the decrypted data cannot be decoded as UTF-8
-            InvalidEncryptedFormat: If the encrypted data format is invalid
-            HmacError: If HMAC verification fails during decryption
-            InvalidEncryptionKeyError: If the organization encryption key is invalid
         """
         try:
             return BitwardenSecret(
@@ -135,7 +110,7 @@ class BWSecretClient:
                 creationDate=secret.creationDate,
                 revisionDate=secret.revisionDate,
             )
-        except UnicodeDecodeError as e:
+        except (UnicodeDecodeError, CryptographyError) as e:
             raise SecretParseError("Failed to decode secret value or key") from e
 
     def _parse_secret(self, data: dict[str, Any]) -> BitwardenSecret:
@@ -152,10 +127,7 @@ class BWSecretClient:
             BitwardenSecret: The parsed and decrypted secret
 
         Raises:
-            ValidationError: If the data doesn't match the BitwardenSecret model
             SecretParseError: If the secret cannot be decrypted or decoded
-            InvalidEncryptedFormat: If the encrypted data format is invalid
-            HmacError: If HMAC verification fails during decryption
         """
         undec_secret = BitwardenSecret.model_validate(data)
         return self._decrypt_secret(undec_secret)
@@ -180,8 +152,6 @@ class BWSecretClient:
             ApiError: If the API returns a non-200 status code
             SecretParseError: If the secret cannot be parsed or decrypted
             SendRequestError: If the network request fails
-            InvalidEncryptedFormat: If the encrypted data format is invalid
-            HmacError: If HMAC verification fails during decryption
 
         Example:
             ```python
@@ -251,8 +221,6 @@ class BWSecretClient:
             UnauthorisedError: If the server returns a 401 Unauthorized response
             ApiError: If the API returns a non-200 status code
             SecretParseError: If any secret cannot be parsed or decrypted
-            InvalidEncryptedFormat: If any encrypted data format is invalid
-            HmacError: If HMAC verification fails during decryption
 
         Example:
             ```python
