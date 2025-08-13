@@ -81,6 +81,23 @@ class BWSecretClient:
             }
         )
 
+    def _reload_auth(self) -> None:
+        """
+        Reload the authentication headers for the current session.
+
+        Updates the session headers with the current bearer token from the auth object.
+        This method is typically called when the authentication token has been refreshed
+        or updated and needs to be applied to subsequent HTTP requests.
+
+        Returns:
+            None
+        """
+        self.session.headers.update(
+            {
+                "Authorization": f"Bearer {self.auth.bearer_token}",
+            }
+        )
+
     def _decrypt_secret(self, secret: BitwardenSecret) -> BitwardenSecret:
         """
         Decrypt an encrypted BitwardenSecret.
@@ -163,6 +180,7 @@ class BWSecretClient:
 
         if not isinstance(secret_id, str):
             raise ValueError("Secret ID must be a string")
+        self._reload_auth()
         response = self.session.get(f"{self.region.api_url}/secrets/{secret_id}")
         if response.status_code == 401:
             raise UnauthorisedError(response.text)
@@ -237,6 +255,8 @@ class BWSecretClient:
 
         lsd: str = last_synced_date.isoformat()
         try:
+            self._reload_auth()
+
             response = self.session.get(
                 f"{self.region.api_url}/organizations/{self.auth.org_id}/secrets/sync",
                 params={"lastSyncedDate": lsd},
