@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.0.0] - 2025-08-13
+### :sparkles: New Features
+- [`70868f1`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/70868f1deb1ce1d7018f2584d966959d1ceb1d20) - added testing *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+- [`09ea0aa`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/09ea0aa9003a26e0510d8bee8c815ec85acc3739) - added correct error handling *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+- [`45bd880`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/45bd880fe111be037dd37a2c19194e5fe3a067de) - added error handling *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+- [`d45eb32`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/d45eb32e0de9590eb884d95e802568595e389400) - even more improved api errors *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+- [`25954c2`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/25954c28b7bd4a006dc69accd1ce984e566aadd9) - init docs *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+- [`fa9c6ea`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/fa9c6ea874c855b8d56c53bcd50657be2bc27793) - added mkdocs *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+
+### :bug: Bug Fixes
+- [`14d1231`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/14d12317bb5053108e873908fc8df7b7a577a701) - cleaned up docs strings and exception code *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+- [`7274aae`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/7274aae7ac81ab31b29860a075b2959be2506ff2) - actually refresh bearer token *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+
+### :recycle: Refactors
+- [`fabb9a0`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/fabb9a0eb29f16f7d75c3e5f7f080f616186ffaa) - added correct type hints *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+
+### :wrench: Chores
+- [`40276d8`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/40276d850ca549fb1233bbc9647cd4c9e1cbbd28) - relock poetry *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+- [`ea5f008`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/ea5f00808d14059cbcd037bdb3eb703b3eb5b061) - bump version *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+
+
 ## [v0.1.4] - 2025-07-17
 ### :sparkles: New Features
 - [`2397274`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/2397274e7cf43fd47504ca189b41f003c84b54ac) - added better error loging when receiving invalid identity responses *(commit by [@rippleFCL](https://github.com/rippleFCL))*
@@ -37,3 +58,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.1.3]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v0.1.2...v0.1.3
 [v0.1.4]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v0.1.3...v0.1.4
 [v2.0.0]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v0.1.4...v2.0.0
+[v1.0.0]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v0.1.4...v1.0.0
