@@ -1,6 +1,6 @@
 [build]
   publish = "site"
-  command = "pip install poetry && poetry install && poetry run mkdocs build"
+  command = "pip install poetry && python -m poetry install && python -m poetry run mkdocs build"
 
 [build.environment]
   PYTHON_VERSION = "3.13"
@@ -9,12 +9,3 @@
   from = "/*"
   to = "/index.html"
   status = 404
-
-[context.production]
-  command = "pip install poetry && poetry install && poetry run mkdocs build"
-
-[context.deploy-preview]
-  command = "pip install poetry && poetry install && poetry run mkdocs build"
-
-[context.branch-deploy]
-  command = "pip install poetry && poetry install && poetry run mkdocs build"
