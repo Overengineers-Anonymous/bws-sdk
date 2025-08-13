@@ -11,12 +11,6 @@ Classes:
     AlgoEnum: Enumeration of supported encryption algorithms
     EncryptedValue: Represents and handles encrypted data with metadata
 
-Functions:
-    The module provides methods for:
-    - Key derivation using HMAC and HKDF
-    - AES encryption/decryption in CBC mode
-    - HMAC verification for authenticated encryption
-    - Base64 encoding/decoding of cryptographic data
 """
 
 import base64

@@ -27,6 +27,10 @@ packages = [
 ruff = "^0.11.11"
 pytest-cov = "^6.1.1"
 pytest = "^8.4.1"
+mkdocs = "^1.6.0"
+mkdocs-material = "^9.5.0"
+mkdocstrings = "^0.26.0"
+mkdocstrings-python = "^1.11.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
