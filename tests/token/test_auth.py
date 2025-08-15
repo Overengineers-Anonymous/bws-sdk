@@ -83,7 +83,7 @@ def test_auth_initialization_state_file(client_token, region):
         patch("requests.post") as mock_post,
         patch("bws_sdk.token.Auth._identity_request") as mock_identity_request,
         patch("jwt.decode_complete") as mock_jwt_decode,
-        tempfile.NamedTemporaryFile(mode="w", delete_on_close=False) as state_file,
+        tempfile.NamedTemporaryFile(mode="w") as state_file,
     ):
         state_file.write(
             "2.MDAwMDAwMDAwMDAwMDAwMA==|Rf21twoJicVfk3W2YblNBs7fZuQkVoJhcAv3r1TrXlKGXn4qf/djHhTGFzlDGqhzFArAFgFuWhRW5o/NSLVSr0olShtlp1K9te+7EHTu5+eOfMYExpRtuFmBrU1rp8IHlZvYmF0LKNryuOreCgg5hg==|dSaC3pJYzxNZNgEDx+rZFpV/MDlJNbQR31jkQWi5fXI=|test_access_token"
@@ -150,7 +150,7 @@ def test_auth_initialization_state_file_invalid(client_token, region, invalid_da
     with (
         patch("requests.post") as mock_post,
         patch("jwt.decode_complete") as mock_jwt_decode,
-        tempfile.NamedTemporaryFile(mode="w", delete_on_close=False) as state_file,
+        tempfile.NamedTemporaryFile(mode="w") as state_file,
     ):
         state_file.write(invalid_data)
         state_file.flush()
