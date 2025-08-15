@@ -226,7 +226,9 @@ class EncryptedValue:
             raise ValueError("Data cannot be empty")
         if len(mac) != 32:
             raise ValueError("MAC must be 32 bytes long")
-        if algo not in AlgoEnum:
+        if algo not in [item.value for item in AlgoEnum] and algo not in [
+            item for item in AlgoEnum
+        ]:
             raise ValueError("Invalid algorithm specified")
         self.iv = iv
         self.data = data
