@@ -169,7 +169,9 @@ def test_sync_success(mock_auth, region, mock_secret):
 def test_sync_invalid_date(region):
     with patch("bws_sdk.client.Auth.from_token"):
         client = BWSecretClient(region, "access_token")
-        with pytest.raises(ValueError, match="Last synced date must be a datetime object"):
+        with pytest.raises(
+            ValueError, match="Last synced date must be a datetime object"
+        ):
             client.sync("invalid_date")
 
 
@@ -222,7 +224,9 @@ def test_decrypt_secret_success(mock_encrypted_value, mock_auth, region, mock_se
 
 @patch("bws_sdk.client.Auth.from_token")
 @patch("bws_sdk.client.EncryptedValue")
-def test_decrypt_secret_unicode_error(mock_encrypted_value, mock_auth, region, mock_secret):
+def test_decrypt_secret_unicode_error(
+    mock_encrypted_value, mock_auth, region, mock_secret
+):
     mock_auth.return_value.org_enc_key = MagicMock()
     client = BWSecretClient(region, "access_token")
 
@@ -266,12 +270,19 @@ def test_create_success(mock_auth, region, mock_secret):
             with patch.object(client, "_parse_secret") as mock_parse:
                 mock_parse.return_value = mock_secret
 
-                result = client.create("test_key", "test_value", "test_note", ["project1"])
+                result = client.create(
+                    "test_key", "test_value", "test_note", ["project1"]
+                )
 
                 assert result == mock_secret
                 mock_post.assert_called_once_with(
                     f"{region.api_url}/organizations/org_id/secrets",
-                    json={"key": "encrypted", "value": "encrypted", "note": "encrypted", "projectIds": ["weh"]},
+                    json={
+                        "key": "encrypted",
+                        "value": "encrypted",
+                        "note": "encrypted",
+                        "projectIds": ["weh"],
+                    },
                 )
 
 
@@ -306,7 +317,9 @@ def test_create_with_project_ids(mock_auth, region, mock_secret):
             with patch.object(client, "_parse_secret") as mock_parse:
                 mock_parse.return_value = mock_secret
 
-                result = client.create("test_key", "test_value", "test_note", ["proj1", "proj2"])
+                result = client.create(
+                    "test_key", "test_value", "test_note", ["proj1", "proj2"]
+                )
 
                 assert result == mock_secret
                 mock_encrypt.assert_called_once()

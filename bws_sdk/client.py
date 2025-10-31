@@ -12,7 +12,6 @@ Classes:
 from datetime import datetime
 from typing import Any
 
-from pre_commit.languages import r
 import requests
 
 from .bws_types import BitwardenSecret, BitwardenSecretCreate, Region
@@ -45,7 +44,9 @@ class BWSecretClient:
         session (requests.Session): HTTP session for API requests
     """
 
-    def __init__(self, region: Region, access_token: str, state_file: str | None = None):
+    def __init__(
+        self, region: Region, access_token: str, state_file: str | None = None
+    ):
         """
         Initialize the BWSecretClient.
 
@@ -117,8 +118,12 @@ class BWSecretClient:
             return BitwardenSecret(
                 id=secret.id,
                 organizationId=secret.organizationId,
-                key=EncryptedValue.from_str(secret.key).decrypt(self.auth.org_enc_key).decode("utf-8"),
-                value=EncryptedValue.from_str(secret.value).decrypt(self.auth.org_enc_key).decode("utf-8"),
+                key=EncryptedValue.from_str(secret.key)
+                .decrypt(self.auth.org_enc_key)
+                .decode("utf-8"),
+                value=EncryptedValue.from_str(secret.value)
+                .decrypt(self.auth.org_enc_key)
+                .decode("utf-8"),
                 creationDate=secret.creationDate,
                 revisionDate=secret.revisionDate,
             )
@@ -142,9 +147,15 @@ class BWSecretClient:
             SecretParseError: If the encryption process fails
         """
         try:
-            encrypted_key = EncryptedValue.from_data(self.auth.org_enc_key, secret.key).to_str()
-            encrypted_value = EncryptedValue.from_data(self.auth.org_enc_key, secret.value).to_str()
-            encrypted_note = EncryptedValue.from_data(self.auth.org_enc_key, secret.note).to_str()
+            encrypted_key = EncryptedValue.from_data(
+                self.auth.org_enc_key, secret.key
+            ).to_str()
+            encrypted_value = EncryptedValue.from_data(
+                self.auth.org_enc_key, secret.value
+            ).to_str()
+            encrypted_note = EncryptedValue.from_data(
+                self.auth.org_enc_key, secret.note
+            ).to_str()
             return BitwardenSecretCreate(
                 key=encrypted_key,
                 value=encrypted_value,
@@ -210,7 +221,9 @@ class BWSecretClient:
         if response.status_code == 401:
             raise UnauthorisedError(response.text)
         if response.status_code != 200:
-            raise ApiError(f"Failed to retrieve secret: {response.status_code} {response.text}")
+            raise ApiError(
+                f"Failed to retrieve secret: {response.status_code} {response.text}"
+            )
         return self._parse_secret(response.json())
 
     def raise_errors(self, response: requests.Response) -> None:
@@ -294,7 +307,9 @@ class BWSecretClient:
                 decrypted_secrets.append(self._parse_secret(secret))
         return decrypted_secrets
 
-    def create(self, key: str, value: str, note: str, project_ids: list[str]) -> BitwardenSecret:
+    def create(
+        self, key: str, value: str, note: str, project_ids: list[str]
+    ) -> BitwardenSecret:
         """
         Create a new secret on the Bitwarden server.
 

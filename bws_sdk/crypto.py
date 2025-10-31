@@ -17,9 +17,8 @@ import base64
 import hashlib
 import hmac
 import logging
-from enum import Enum
 import os
-from re import S
+from enum import Enum
 
 from cryptography.hazmat.primitives import hashes, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -338,7 +337,7 @@ class EncryptedValue:
             EncryptedValue: New EncryptedValue instance with verified components
         """
         iv = os.urandom(16)
-        padded_data = cls._pad(data.encode('utf-8'))
+        padded_data = cls._pad(data.encode("utf-8"))
         enc_data = cls.encrypt_aes(key.key, padded_data, iv)
         mac = cls.generate_mac(key.mac_key, iv, enc_data)
         algo = AlgoEnum.AES256 if len(key.key) == 32 else AlgoEnum.AES128

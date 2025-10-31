@@ -90,7 +90,9 @@ class TestRoundTripEncryption:
         encrypted_data = EncryptedValue.encrypt_aes(aes256_key.key, padded_data, iv)
         mac = EncryptedValue.generate_mac(aes256_key.mac_key, iv, encrypted_data)
 
-        encrypted_value = EncryptedValue(algo=AlgoEnum.AES256, iv=iv, data=encrypted_data, mac=mac)
+        encrypted_value = EncryptedValue(
+            algo=AlgoEnum.AES256, iv=iv, data=encrypted_data, mac=mac
+        )
 
         decrypted_data = encrypted_value.decrypt(aes256_key)
         assert decrypted_data == original_data
@@ -117,7 +119,9 @@ class TestRoundTripEncryption:
         assert decrypted_data1 == original_data.encode("utf-8")
 
         # Second round with decrypted data
-        encrypted_value2 = EncryptedValue.from_data(aes256_key, decrypted_data1.decode("utf-8"))
+        encrypted_value2 = EncryptedValue.from_data(
+            aes256_key, decrypted_data1.decode("utf-8")
+        )
         decrypted_data2 = encrypted_value2.decrypt(aes256_key)
         assert decrypted_data2 == original_data.encode("utf-8")
 
