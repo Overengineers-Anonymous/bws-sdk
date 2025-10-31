@@ -52,6 +52,162 @@ self_hosted_region = Region(
 client = BWSecretClient(eu_region, access_token)
 ```
 
+## Secret Management
+
+### Creating Secrets
+
+#### Basic Secret Creation
+
+```python
+from bws_sdk import BWSecretClient, Region
+import os
+
+# Set up the region and client
+region = Region(
+    api_url="https://api.bitwarden.com",
+    identity_url="https://identity.bitwarden.com"
+)
+
+client = BWSecretClient(
+    region=region,
+    access_token=os.environ["BITWARDEN_ACCESS_TOKEN"]
+)
+
+# Create a new secret
+created_secret = client.create(
+    key="database_password",
+    value="super_secure_password_123",
+    note="Production database password",
+    project_ids=["project-uuid-here"]
+)
+
+print(f"Created secret with ID: {created_secret.id}")
+print(f"Secret key: {created_secret.key}")
+print(f"Secret value: {created_secret.value}")
+```
+
+#### Creating Multiple Secrets
+
+```python
+from bws_sdk import BWSecretClient, Region
+import os
+
+client = BWSecretClient(region, os.environ["BITWARDEN_ACCESS_TOKEN"])
+
+# Define secrets to create
+secrets_to_create = [
+    {
+        "key": "api_key_stripe",
+        "value": "sk_live_abcdef123456789",
+        "note": "Stripe API key for payment processing",
+        "project_ids": ["payment-project-uuid"]
+    },
+    {
+        "key": "database_url",
+        "value": "postgresql://user:pass@localhost:5432/mydb",
+        "note": "Main database connection string",
+        "project_ids": ["backend-project-uuid"]
+    },
+    {
+        "key": "jwt_secret",
+        "value": "your-256-bit-secret-here",
+        "note": "JWT signing secret for authentication",
+        "project_ids": ["auth-project-uuid"]
+    }
+]
+
+# Create all secrets
+created_secrets = []
+for secret_data in secrets_to_create:
+    try:
+        secret = client.create(**secret_data)
+        created_secrets.append(secret)
+        print(f"✓ Created secret: {secret.key}")
+    except Exception as e:
+        print(f"✗ Failed to create secret {secret_data['key']}: {e}")
+
+print(f"\nSuccessfully created {len(created_secrets)} secrets")
+```
+
+#### Creating Secrets with Configuration Class
+
+```python
+from bws_sdk import BWSecretClient, Region
+from dataclasses import dataclass
+from typing import List
+import os
+
+@dataclass
+class SecretConfig:
+    key: str
+    value: str
+    note: str
+    project_ids: List[str]
+
+class SecretManager:
+    def __init__(self, bw_client: BWSecretClient):
+        self.client = bw_client
+
+    def create_application_secrets(self) -> dict:
+        """Create all application secrets and return their IDs."""
+        secrets = [
+            SecretConfig(
+                key="redis_url",
+                value="redis://localhost:6379/0",
+                note="Redis connection URL for caching",
+                project_ids=[os.environ["CACHE_PROJECT_ID"]]
+            ),
+            SecretConfig(
+                key="email_service_key",
+                value="SG.abcdef123456789",
+                note="SendGrid API key for email service",
+                project_ids=[os.environ["EMAIL_PROJECT_ID"]]
+            ),
+            SecretConfig(
+                key="encryption_key",
+                value="32-character-encryption-key-here",
+                note="Application-level encryption key",
+                project_ids=[os.environ["SECURITY_PROJECT_ID"]]
+            )
+        ]
+
+        secret_ids = {}
+        for secret_config in secrets:
+            try:
+                created_secret = self.client.create(
+                    key=secret_config.key,
+                    value=secret_config.value,
+                    note=secret_config.note,
+                    project_ids=secret_config.project_ids
+                )
+                secret_ids[secret_config.key] = created_secret.id
+                print(f"✓ Created {secret_config.key}: {created_secret.id}")
+            except Exception as e:
+                print(f"✗ Failed to create {secret_config.key}: {e}")
+                raise
+
+        return secret_ids
+
+# Usage
+region = Region(
+    api_url="https://api.bitwarden.com",
+    identity_url="https://identity.bitwarden.com"
+)
+
+client = BWSecretClient(region, os.environ["BITWARDEN_ACCESS_TOKEN"])
+manager = SecretManager(client)
+
+# Create all application secrets
+secret_ids = manager.create_application_secrets()
+
+# Save secret IDs to environment file or config
+with open('.env.secret_ids', 'w') as f:
+    for key, secret_id in secret_ids.items():
+        f.write(f"{key.upper()}_SECRET_ID={secret_id}\n")
+
+print(f"Secret IDs saved to .env.secret_ids")
+```
+
 ## Configuration Management
 
 ### Loading Database Configuration
@@ -488,6 +644,287 @@ EMAIL_HOST_PASSWORD = get_secret("EMAIL_PASSWORD_SECRET_ID")
 
 # Third-party API keys
 STRIPE_SECRET_KEY = get_secret("STRIPE_SECRET_KEY_SECRET_ID")
+```
+
+### Deployment Automation
+
+This example shows how to use the `create` method for automated deployment and secret provisioning:
+
+```python
+#!/usr/bin/env python3
+"""
+Deployment script that creates application secrets during deployment.
+Run this script as part of your CI/CD pipeline or deployment automation.
+"""
+
+import os
+import json
+import secrets
+import string
+from typing import Dict, List
+from bws_sdk import BWSecretClient, Region
+from bws_sdk.errors import BWSSDKError
+
+class DeploymentSecretManager:
+    def __init__(self, environment: str = "production"):
+        self.environment = environment
+        self.region = Region(
+            api_url=os.environ["BITWARDEN_API_URL"],
+            identity_url=os.environ["BITWARDEN_IDENTITY_URL"]
+        )
+        self.client = BWSecretClient(
+            region=self.region,
+            access_token=os.environ["BITWARDEN_ACCESS_TOKEN"]
+        )
+        self.project_id = os.environ[f"{environment.upper()}_PROJECT_ID"]
+
+    def generate_secure_password(self, length: int = 32) -> str:
+        """Generate a cryptographically secure random password."""
+        alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+        return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+    def generate_api_key(self, prefix: str = "sk", length: int = 32) -> str:
+        """Generate an API key with a prefix."""
+        key_part = ''.join(secrets.choice(string.ascii_lowercase + string.digits)
+                          for _ in range(length))
+        return f"{prefix}_{key_part}"
+
+    def create_application_secrets(self) -> Dict[str, str]:
+        """Create all required application secrets for deployment."""
+
+        # Define secrets with their generation methods
+        secret_definitions = [
+            {
+                "key": f"{self.environment}_database_password",
+                "value": self.generate_secure_password(40),
+                "note": f"Database password for {self.environment} environment",
+            },
+            {
+                "key": f"{self.environment}_jwt_secret",
+                "value": self.generate_secure_password(64),
+                "note": f"JWT signing secret for {self.environment} authentication",
+            },
+            {
+                "key": f"{self.environment}_encryption_key",
+                "value": secrets.token_hex(32),  # 256-bit hex key
+                "note": f"Application encryption key for {self.environment}",
+            },
+            {
+                "key": f"{self.environment}_session_secret",
+                "value": self.generate_secure_password(48),
+                "note": f"Session encryption secret for {self.environment}",
+            },
+            {
+                "key": f"{self.environment}_redis_password",
+                "value": self.generate_secure_password(24),
+                "note": f"Redis authentication password for {self.environment}",
+            }
+        ]
+
+        created_secrets = {}
+
+        for secret_def in secret_definitions:
+            try:
+                print(f"Creating secret: {secret_def['key']}")
+
+                created_secret = self.client.create(
+                    key=secret_def["key"],
+                    value=secret_def["value"],
+                    note=secret_def["note"],
+                    project_ids=[self.project_id]
+                )
+
+                created_secrets[secret_def["key"]] = {
+                    "secret_id": created_secret.id,
+                    "created_at": created_secret.creationDate.isoformat(),
+                    "note": secret_def["note"]
+                }
+
+                print(f"✓ Created {secret_def['key']}: {created_secret.id}")
+
+            except BWSSDKError as e:
+                print(f"✗ Failed to create {secret_def['key']}: {e}")
+                raise
+
+        return created_secrets
+
+    def create_external_service_secrets(self, api_keys: Dict[str, str]) -> Dict[str, str]:
+        """Create secrets for external service API keys."""
+
+        created_secrets = {}
+
+        for service_name, api_key in api_keys.items():
+            secret_key = f"{self.environment}_{service_name}_api_key"
+
+            try:
+                print(f"Creating external API secret: {secret_key}")
+
+                created_secret = self.client.create(
+                    key=secret_key,
+                    value=api_key,
+                    note=f"{service_name.title()} API key for {self.environment} environment",
+                    project_ids=[self.project_id]
+                )
+
+                created_secrets[secret_key] = {
+                    "secret_id": created_secret.id,
+                    "service": service_name,
+                    "created_at": created_secret.creationDate.isoformat()
+                }
+
+                print(f"✓ Created {secret_key}: {created_secret.id}")
+
+            except BWSSDKError as e:
+                print(f"✗ Failed to create {secret_key}: {e}")
+                raise
+
+        return created_secrets
+
+    def save_secret_manifest(self, secrets: Dict[str, Dict], filename: str = None):
+        """Save created secret information to a manifest file."""
+        if filename is None:
+            filename = f"{self.environment}_secrets_manifest.json"
+
+        manifest = {
+            "environment": self.environment,
+            "project_id": self.project_id,
+            "created_at": secrets,
+            "total_secrets": len(secrets)
+        }
+
+        with open(filename, 'w') as f:
+            json.dump(manifest, f, indent=2)
+
+        print(f"Secret manifest saved to {filename}")
+
+def main():
+    """Main deployment script."""
+    environment = os.environ.get("DEPLOYMENT_ENVIRONMENT", "staging")
+
+    print(f"Starting secret creation for {environment} environment...")
+
+    # Initialize the secret manager
+    manager = DeploymentSecretManager(environment)
+
+    # Create application secrets
+    app_secrets = manager.create_application_secrets()
+
+    # Create external service secrets (these would be provided externally)
+    external_apis = {
+        "stripe": os.environ.get("STRIPE_API_KEY", ""),
+        "sendgrid": os.environ.get("SENDGRID_API_KEY", ""),
+        "twilio": os.environ.get("TWILIO_API_KEY", ""),
+    }
+
+    # Filter out empty API keys
+    external_apis = {k: v for k, v in external_apis.items() if v}
+
+    if external_apis:
+        external_secrets = manager.create_external_service_secrets(external_apis)
+        app_secrets.update(external_secrets)
+
+    # Save manifest for later reference
+    manager.save_secret_manifest(app_secrets)
+
+    print(f"\n✅ Successfully created {len(app_secrets)} secrets for {environment}")
+    print("Secret IDs have been saved to the manifest file.")
+    print("Update your application configuration to use these secret IDs.")
+
+if __name__ == "__main__":
+    main()
+```
+
+### Docker Compose with Secret Creation
+
+This example shows how to create secrets as part of a Docker Compose deployment:
+
+```python
+# create_docker_secrets.py
+"""
+Script to create secrets for Docker Compose deployment.
+Run before starting your Docker services.
+"""
+
+import os
+import yaml
+from bws_sdk import BWSecretClient, Region
+
+def create_docker_secrets():
+    """Create secrets for Docker Compose services."""
+
+    region = Region(
+        api_url="https://api.bitwarden.com",
+        identity_url="https://identity.bitwarden.com"
+    )
+
+    client = BWSecretClient(region, os.environ["BITWARDEN_ACCESS_TOKEN"])
+    project_id = os.environ["DOCKER_PROJECT_ID"]
+
+    # Docker service secrets
+    docker_secrets = [
+        {
+            "key": "postgres_password",
+            "value": os.environ["POSTGRES_PASSWORD"],
+            "note": "PostgreSQL database password for Docker deployment"
+        },
+        {
+            "key": "redis_password",
+            "value": os.environ["REDIS_PASSWORD"],
+            "note": "Redis password for Docker deployment"
+        },
+        {
+            "key": "app_secret_key",
+            "value": os.environ["APP_SECRET_KEY"],
+            "note": "Application secret key for Docker deployment"
+        }
+    ]
+
+    secret_ids = {}
+
+    for secret_def in docker_secrets:
+        created_secret = client.create(
+            key=secret_def["key"],
+            value=secret_def["value"],
+            note=secret_def["note"],
+            project_ids=[project_id]
+        )
+
+        secret_ids[secret_def["key"]] = created_secret.id
+        print(f"Created {secret_def['key']}: {created_secret.id}")
+
+    # Update docker-compose.yml with secret IDs
+    compose_file = "docker-compose.yml"
+    with open(compose_file, 'r') as f:
+        compose_config = yaml.safe_load(f)
+
+    # Add secret IDs to environment variables
+    if 'services' in compose_config:
+        for service_name, service_config in compose_config['services'].items():
+            if 'environment' in service_config:
+                env = service_config['environment']
+                if isinstance(env, list):
+                    # Convert list format to dict for easier manipulation
+                    env_dict = {}
+                    for item in env:
+                        if '=' in item:
+                            key, value = item.split('=', 1)
+                            env_dict[key] = value
+                    service_config['environment'] = env_dict
+
+                # Add secret IDs to environment
+                for secret_name, secret_id in secret_ids.items():
+                    env_var_name = f"{secret_name.upper()}_SECRET_ID"
+                    service_config['environment'][env_var_name] = secret_id
+
+    # Save updated compose file
+    with open(compose_file, 'w') as f:
+        yaml.dump(compose_config, f, default_flow_style=False)
+
+    print(f"Updated {compose_file} with secret IDs")
+    return secret_ids
+
+if __name__ == "__main__":
+    create_docker_secrets()
 ```
 
 These examples demonstrate various patterns for integrating BWS SDK into your applications, from simple secret retrieval to complex caching and resilience strategies.
