@@ -18,6 +18,8 @@ import hashlib
 import hmac
 import logging
 from enum import Enum
+import os
+from re import S
 
 from cryptography.hazmat.primitives import hashes, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -320,7 +322,45 @@ class EncryptedValue:
             logger.debug("Failed to decode encrypted string: %s", encrypted_str)
             raise InvalidEncryptedFormat("Invalid encrypted format") from e
 
-    def generate_mac(self, key: bytes) -> bytes:
+    @classmethod
+    def from_data(cls, key: SymmetricCryptoKey, data: str) -> "EncryptedValue":
+        """
+        Create an EncryptedValue from raw encrypted data string.
+
+        This method decodes the encrypted data string and verifies the MAC
+        using the provided symmetric key. It raises an error if MAC verification
+        fails.
+
+        Args:
+            key (SymmetricCryptoKey): The symmetric key for MAC verification
+            data (str): Encrypted data string in Bitwarden format
+        Returns:
+            EncryptedValue: New EncryptedValue instance with verified components
+        """
+        iv = os.urandom(16)
+        padded_data = cls._pad(data.encode('utf-8'))
+        enc_data = cls.encrypt_aes(key.key, padded_data, iv)
+        mac = cls.generate_mac(key.mac_key, iv, enc_data)
+        algo = AlgoEnum.AES256 if len(key.key) == 32 else AlgoEnum.AES128
+        return cls(algo=algo, iv=iv, data=enc_data, mac=mac)
+
+    def to_str(self) -> str:
+        """
+        Convert the EncryptedValue to a Bitwarden encrypted string.
+
+        Constructs the encrypted string format used by Bitwarden, including
+        the algorithm identifier, base64-encoded IV, data, and MAC.
+
+        Returns:
+            str: Encrypted string in Bitwarden format
+        """
+        iv_b64 = base64.b64encode(self.iv).decode("utf-8")
+        data_b64 = base64.b64encode(self.data).decode("utf-8")
+        mac_b64 = base64.b64encode(self.mac).decode("utf-8")
+        return f"{self.algo.value}.{iv_b64}|{data_b64}|{mac_b64}"
+
+    @staticmethod
+    def generate_mac(key: bytes, iv: bytes, encrypted_data: bytes) -> bytes:
         """
         Generate a message authentication code for the encrypted data.
 
@@ -337,12 +377,13 @@ class EncryptedValue:
             The MAC is computed over the concatenation of IV + encrypted_data.
         """
         hmac_obj = hmac.new(key, digestmod=hashlib.sha256)
-        hmac_obj.update(self.iv)
-        hmac_obj.update(self.data)
+        hmac_obj.update(iv)
+        hmac_obj.update(encrypted_data)
 
         return hmac_obj.digest()
 
-    def _unpad(self, data: bytes, key: bytes) -> bytes:
+    @staticmethod
+    def _unpad(data: bytes) -> bytes:
         """
         Remove PKCS7 padding from decrypted data.
 
@@ -360,6 +401,21 @@ class EncryptedValue:
         unpadded_data = unpadder.update(data)
         unpadded_data += unpadder.finalize()
         return unpadded_data
+
+    @staticmethod
+    def _pad(data: bytes) -> bytes:
+        """
+        Apply PKCS7 padding to data for AES encryption.
+
+        Args:
+            data (bytes): Data to be padded
+        Returns:
+            bytes: Padded data suitable for AES block size
+        """
+        padder = padding.PKCS7(128).padder()
+        padded_data = padder.update(data)
+        padded_data += padder.finalize()
+        return padded_data
 
     def _decrypt_aes(self, key: bytes) -> bytes:
         """
@@ -380,7 +436,28 @@ class EncryptedValue:
         cipher = Cipher(algorithms.AES(key), modes.CBC(self.iv))
         decryptor = cipher.decryptor()
         data = decryptor.update(self.data) + decryptor.finalize()
-        return self._unpad(data, key)
+        return self._unpad(data)
+
+    @staticmethod
+    def encrypt_aes(key: bytes, padded_data: bytes, iv: bytes) -> bytes:
+        """
+        Encrypt data using AES-CBC with PKCS7 padding.
+
+        Args:
+            key (bytes): The encryption key for AES
+            padded_data (bytes): The plaintext data to encrypt
+            iv (bytes): The initialization vector for AES
+
+        Returns:
+            bytes: Encrypted data
+
+        Note:
+            You must ensure that `padded_data` is already padded to the AES block size.
+        """
+        cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+        encryptor = cipher.encryptor()
+        encrypted_data = encryptor.update(padded_data) + encryptor.finalize()
+        return encrypted_data
 
     def decrypt(self, key: SymmetricCryptoKey) -> bytes:
         """
@@ -405,7 +482,7 @@ class EncryptedValue:
             This method ensures authenticated encryption by verifying the MAC
             before performing decryption, preventing tampering attacks.
         """
-        mac = self.generate_mac(key.mac_key)
+        mac = self.generate_mac(key.mac_key, self.iv, self.data)
         if not hmac.compare_digest(mac, self.mac):
             raise HmacError("MAC verification failed")
 

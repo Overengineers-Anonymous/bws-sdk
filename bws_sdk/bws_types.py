@@ -64,3 +64,21 @@ class BitwardenSecret(BaseModel):
     value: str
     creationDate: datetime
     revisionDate: datetime
+
+
+class BitwardenSecretCreate(BaseModel):
+    """
+    Model for creating a new Bitwarden secret.
+
+    This class represents the data required to create a new secret in Bitwarden's Secrets Manager.
+
+    Attributes:
+        key (str): The secret's key/name (plaintext)
+        value (str): The secret's value (plaintext)
+    """
+
+    key: str
+    value: str
+    note: str
+    accessPoliciesRequests: None = None
+    projectIds: list[str] | None = None
