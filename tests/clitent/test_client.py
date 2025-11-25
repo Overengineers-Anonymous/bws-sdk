@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from bws_sdk.bws_types import BitwardenSecret, Region
+from bws_sdk.bws_types import BitwardenSecret, BitwardenSecretRT, BitwardenSync, Region
 from bws_sdk.client import BWSecretClient
 from bws_sdk.crypto import SymmetricCryptoKey
 from bws_sdk.errors import ApiError, SecretParseError, UnauthorisedError
@@ -79,6 +79,12 @@ def test_get_by_id_success(mock_auth, region, mock_secret):
     with patch.object(client.session, "get") as mock_get:
         mock_response = Mock()
         mock_response.status_code = 200
+        headers_dict = {
+            "X-RateLimit-Limit": "1m",
+            "X-RateLimit-Remaining": "100",
+            "X-RateLimit-Reset": "2023-01-01T00:00:00Z",
+        }
+        mock_response.headers.get = lambda k, d=None: headers_dict.get(k, d)
         mock_response.json.return_value = {
             "id": "secret_id",
             "organizationId": "org_id",
@@ -92,7 +98,10 @@ def test_get_by_id_success(mock_auth, region, mock_secret):
         with patch.object(client, "_parse_secret") as mock_parse:
             mock_parse.return_value = mock_secret
             result = client.get_by_id("secret_id")
-            assert result == mock_secret
+            assert result is not None
+            assert isinstance(result, BitwardenSecretRT)
+            assert result.id == mock_secret.id
+            assert result.ratelimit.remaining == 100
             mock_get.assert_called_once_with(f"{region.api_url}/secrets/secret_id")
 
 
@@ -161,6 +170,12 @@ def test_sync_success(mock_auth, region, mock_secret):
     with patch.object(client.session, "get") as mock_get:
         mock_response = Mock()
         mock_response.status_code = 200
+        headers_dict = {
+            "X-RateLimit-Limit": "1m",
+            "X-RateLimit-Remaining": "95",
+            "X-RateLimit-Reset": "2023-01-01T00:00:00Z",
+        }
+        mock_response.headers.get = lambda k, d=None: headers_dict.get(k, d)
         mock_response.json.return_value = {
             "hasChanges": True,
             "secrets": {
@@ -183,8 +198,11 @@ def test_sync_success(mock_auth, region, mock_secret):
             last_sync = datetime(2023, 1, 1)
             result = client.sync(last_sync)
             assert result is not None
-            assert len(result) == 1
-            assert result[0] == mock_secret
+            assert isinstance(result, BitwardenSync)
+            assert result.secrets is not None
+            assert len(result.secrets) == 1
+            assert result.secrets[0] == mock_secret
+            assert result.ratelimit.remaining == 95
 
 
 @patch("bws_sdk.client.Auth.from_token")
@@ -196,6 +214,12 @@ def test_sync_no_changes(mock_auth, region, mock_secret):
     with patch.object(client.session, "get") as mock_get:
         mock_response = Mock()
         mock_response.status_code = 200
+        headers_dict = {
+            "X-RateLimit-Limit": "1m",
+            "X-RateLimit-Remaining": "98",
+            "X-RateLimit-Reset": "2023-01-01T00:00:00Z",
+        }
+        mock_response.headers.get = lambda k, d=None: headers_dict.get(k, d)
         mock_response.json.return_value = {
             "hasChanges": False,
             "secrets": {"data": []},
@@ -206,7 +230,10 @@ def test_sync_no_changes(mock_auth, region, mock_secret):
             mock_parse.return_value = mock_secret
             last_sync = datetime(2023, 1, 1)
             result = client.sync(last_sync)
-            assert result is None
+            assert result is not None
+            assert isinstance(result, BitwardenSync)
+            assert result.secrets is None
+            assert result.ratelimit.remaining == 98
 
 
 def test_sync_invalid_date(region):
@@ -243,11 +270,19 @@ def test_sync_empty_response(mock_auth, region):
     with patch.object(client.session, "get") as mock_get:
         mock_response = Mock()
         mock_response.status_code = 200
+        headers_dict = {
+            "X-RateLimit-Limit": "1m",
+            "X-RateLimit-Remaining": "97",
+            "X-RateLimit-Reset": "2023-01-01T00:00:00Z",
+        }
+        mock_response.headers.get = lambda k, d=None: headers_dict.get(k, d)
         mock_response.json.return_value = {"secrets": {}, "hasChanges": False}
         mock_get.return_value = mock_response
 
         result = client.sync(datetime.now())
-        assert result is None
+        assert result is not None
+        assert isinstance(result, BitwardenSync)
+        assert result.secrets is None
 
 
 @patch("bws_sdk.client.Auth.from_token")

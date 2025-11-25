@@ -14,7 +14,14 @@ from typing import Any
 
 import requests
 
-from .bws_types import BitwardenSecret, BitwardenSecretCreate, Region
+from .bws_types import (
+    BitwardenSecret,
+    BitwardenSecretCreate,
+    BitwardenSecretRT,
+    BitwardenSync,
+    RatelimitInfo,
+    Region,
+)
 from .crypto import (
     EncryptedValue,
 )
@@ -76,7 +83,7 @@ class BWSecretClient:
         self.session.headers.update(
             {
                 "Authorization": f"Bearer {self.auth.bearer_token}",
-                "User-Agent": "Bitwarden Rust-SDK",
+                "User-Agent": "Bitwarden Python-SDK",
                 "Device-Type": "21",
             }
         )
@@ -185,7 +192,7 @@ class BWSecretClient:
         undec_secret = BitwardenSecret.model_validate(data)
         return self._decrypt_secret(undec_secret)
 
-    def get_by_id(self, secret_id: str) -> BitwardenSecret | None:
+    def get_by_id(self, secret_id: str) -> BitwardenSecretRT | None:
         """
         Retrieve a secret by its unique identifier.
 
@@ -224,7 +231,23 @@ class BWSecretClient:
         if response.status_code == 404:
             return None
         self.raise_errors(response)
-        return self._parse_secret(response.json())
+        parsed_secret = self._parse_secret(response.json())
+        ratelimit_info = RatelimitInfo(
+            limit=response.headers.get("X-RateLimit-Limit", "1m"),
+            remaining=int(response.headers.get("X-RateLimit-Remaining", 0)),
+            reset=datetime.fromisoformat(
+                response.headers.get("X-RateLimit-Reset", "1970-01-01T00:00:00Z")
+            ),
+        )
+        return BitwardenSecretRT(
+            id=parsed_secret.id,
+            organizationId=parsed_secret.organizationId,
+            key=parsed_secret.key,
+            value=parsed_secret.value,
+            creationDate=parsed_secret.creationDate,
+            revisionDate=parsed_secret.revisionDate,
+            ratelimit=ratelimit_info,
+        )
 
     def raise_errors(self, response: requests.Response) -> None:
         """
@@ -255,7 +278,7 @@ class BWSecretClient:
         elif response.status_code != 200:
             raise ApiError(f"Unexpected error: {response.status_code} {response.text}")
 
-    def sync(self, last_synced_date: datetime) -> list[BitwardenSecret] | None:
+    def sync(self, last_synced_date: datetime) -> BitwardenSync | None:
         """
         Synchronize secrets from the Bitwarden server since a specified date.
 
@@ -303,14 +326,21 @@ class BWSecretClient:
 
         response_data = response.json()
         unc_secrets = response_data.get("secrets", {})
+        ratelimit_info = RatelimitInfo(
+            limit=response.headers.get("X-RateLimit-Limit", "1m"),
+            remaining=int(response.headers.get("X-RateLimit-Remaining", 0)),
+            reset=datetime.fromisoformat(
+                response.headers.get("X-RateLimit-Reset", "1970-01-01T00:00:00Z")
+            ),
+        )
         if response_data.get("hasChanges", False) is False:
-            return None
+            return BitwardenSync(secrets=None, ratelimit=ratelimit_info)
 
         decrypted_secrets = []
         if unc_secrets:
             for secret in unc_secrets.get("data", []):
                 decrypted_secrets.append(self._parse_secret(secret))
-        return decrypted_secrets
+        return BitwardenSync(secrets=decrypted_secrets, ratelimit=ratelimit_info)
 
     def create(
         self, key: str, value: str, note: str, project_ids: list[str]
