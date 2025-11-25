@@ -38,6 +38,22 @@ class Region(BaseModel):
     identity_url: str
 
 
+class RatelimitInfo(BaseModel):
+    """
+    Model representing rate limit information from the BWS API.
+
+    This class encapsulates the rate limiting details provided by the Bitwarden API,
+    including the maximum number of requests allowed, remaining requests, and reset time.
+
+    Attributes:
+        limit (int): The maximum number of requests allowed in the current time
+    """
+
+    limit: str
+    remaining: int
+    reset: datetime
+
+
 class BitwardenSecret(BaseModel):
     """
     Model representing a Bitwarden secret.
@@ -64,6 +80,15 @@ class BitwardenSecret(BaseModel):
     value: str
     creationDate: datetime
     revisionDate: datetime
+
+
+class BitwardenSecretRT(BitwardenSecret):
+    ratelimit: RatelimitInfo
+
+
+class BitwardenSync(BaseModel):
+    secrets: list[BitwardenSecret] | None
+    ratelimit: RatelimitInfo
 
 
 class BitwardenSecretCreate(BaseModel):
