@@ -80,9 +80,9 @@ def test_get_by_id_success(mock_auth, region, mock_secret):
         mock_response = Mock()
         mock_response.status_code = 200
         headers_dict = {
-            "X-RateLimit-Limit": "1m",
-            "X-RateLimit-Remaining": "100",
-            "X-RateLimit-Reset": "2023-01-01T00:00:00Z",
+            "x-rate-limit-limit": "1m",
+            "x-rate-limit-remaining": "100",
+            "x-rate-limit-reset": "2023-01-01T00:00:00Z",
         }
         mock_response.headers.get = lambda k, d=None: headers_dict.get(k, d)
         mock_response.json.return_value = {
@@ -171,9 +171,9 @@ def test_sync_success(mock_auth, region, mock_secret):
         mock_response = Mock()
         mock_response.status_code = 200
         headers_dict = {
-            "X-RateLimit-Limit": "1m",
-            "X-RateLimit-Remaining": "95",
-            "X-RateLimit-Reset": "2023-01-01T00:00:00Z",
+            "x-rate-limit-limit": "1m",
+            "x-rate-limit-remaining": "95",
+            "x-rate-limit-reset": "2023-01-01T00:00:00Z",
         }
         mock_response.headers.get = lambda k, d=None: headers_dict.get(k, d)
         mock_response.json.return_value = {
@@ -215,9 +215,9 @@ def test_sync_no_changes(mock_auth, region, mock_secret):
         mock_response = Mock()
         mock_response.status_code = 200
         headers_dict = {
-            "X-RateLimit-Limit": "1m",
-            "X-RateLimit-Remaining": "98",
-            "X-RateLimit-Reset": "2023-01-01T00:00:00Z",
+            "x-rate-limit-limit": "1m",
+            "x-rate-limit-remaining": "98",
+            "x-rate-limit-reset": "2023-01-01T00:00:00Z",
         }
         mock_response.headers.get = lambda k, d=None: headers_dict.get(k, d)
         mock_response.json.return_value = {
