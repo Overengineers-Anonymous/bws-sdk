@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.3.1] - 2025-11-25
+### :bug: Bug Fixes
+- [`fd7c9f7`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/fd7c9f7466e748a70e70f9b0cb3c73dc5233874e) - incorrect header names *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+
+### :white_check_mark: Tests
+- [`d7f7d6a`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/d7f7d6a6e702302d688a608fd7e8fbb564be9753) - fix header names *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+
+
 ## [v1.3.0] - 2025-11-25
 ### :bug: Bug Fixes
 - [`1fa5c66`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/1fa5c6656726ffec01943c7e67ce7edc21e3e539) - incorrect type return on sync method *(commit by [@rippleFCL](https://github.com/rippleFCL))*
@@ -88,3 +96,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v1.1.0]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v1.0.0...v1.1.0
 [v1.2.0]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v1.1.0...v1.2.0
 [v1.3.0]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v1.2.0...v1.3.0
+[v1.3.1]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v1.3.0...v1.3.1
