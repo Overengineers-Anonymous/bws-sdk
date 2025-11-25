@@ -278,7 +278,7 @@ class BWSecretClient:
         elif response.status_code != 200:
             raise ApiError(f"Unexpected error: {response.status_code} {response.text}")
 
-    def sync(self, last_synced_date: datetime) -> BitwardenSync | None:
+    def sync(self, last_synced_date: datetime) -> BitwardenSync:
         """
         Synchronize secrets from the Bitwarden server since a specified date.
 
