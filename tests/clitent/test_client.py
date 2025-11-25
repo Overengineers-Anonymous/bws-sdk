@@ -96,6 +96,25 @@ def test_get_by_id_success(mock_auth, region, mock_secret):
             mock_get.assert_called_once_with(f"{region.api_url}/secrets/secret_id")
 
 
+@patch("bws_sdk.client.Auth.from_token")
+def test_get_by_id_not_found(mock_auth, region, mock_secret):
+    mock_auth.return_value.bearer_token = "test_token"
+    mock_auth.return_value.org_enc_key = MagicMock()
+
+    client = BWSecretClient(region, "access_token")
+
+    with patch.object(client.session, "get") as mock_get:
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_response.json.return_value = {
+            "error": "Not Found",
+        }
+        mock_get.return_value = mock_response
+
+        result = client.get_by_id("secret_id")
+        assert result is None
+
+
 def test_get_by_id_invalid_secret_id(region):
     with patch("bws_sdk.client.Auth.from_token"):
         client = BWSecretClient(region, "access_token")
@@ -143,6 +162,7 @@ def test_sync_success(mock_auth, region, mock_secret):
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
+            "hasChanges": True,
             "secrets": {
                 "data": [
                     {
@@ -154,7 +174,7 @@ def test_sync_success(mock_auth, region, mock_secret):
                         "revisionDate": "2023-01-01T00:00:00Z",
                     }
                 ]
-            }
+            },
         }
         mock_get.return_value = mock_response
 
@@ -162,8 +182,31 @@ def test_sync_success(mock_auth, region, mock_secret):
             mock_parse.return_value = mock_secret
             last_sync = datetime(2023, 1, 1)
             result = client.sync(last_sync)
+            assert result is not None
             assert len(result) == 1
             assert result[0] == mock_secret
+
+
+@patch("bws_sdk.client.Auth.from_token")
+def test_sync_no_changes(mock_auth, region, mock_secret):
+    mock_auth.return_value.bearer_token = "test_token"
+    mock_auth.return_value.org_id = "org_id"
+    client = BWSecretClient(region, "access_token")
+
+    with patch.object(client.session, "get") as mock_get:
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "hasChanges": False,
+            "secrets": {"data": []},
+        }
+        mock_get.return_value = mock_response
+
+        with patch.object(client, "_parse_secret") as mock_parse:
+            mock_parse.return_value = mock_secret
+            last_sync = datetime(2023, 1, 1)
+            result = client.sync(last_sync)
+            assert result is None
 
 
 def test_sync_invalid_date(region):
@@ -200,11 +243,11 @@ def test_sync_empty_response(mock_auth, region):
     with patch.object(client.session, "get") as mock_get:
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"secrets": {}}
+        mock_response.json.return_value = {"secrets": {}, "hasChanges": False}
         mock_get.return_value = mock_response
 
         result = client.sync(datetime.now())
-        assert result == []
+        assert result is None
 
 
 @patch("bws_sdk.client.Auth.from_token")
