@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.2.0] - 2025-11-25
+### :sparkles: New Features
+- [`df70562`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/df705622f9114a2bbb3d9ea5662c644ee6ca6689) - return rate limit info *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+
+
 ## [v1.1.0] - 2025-11-25
 ### :sparkles: New Features
 - [`3099f9c`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/3099f9c25045f5331c80e255b05c442ecac4f60e) - better python compatability *(commit by [@rippleFCL](https://github.com/rippleFCL))*
@@ -76,3 +81,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v2.0.0]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v0.1.4...v2.0.0
 [v1.0.0]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v0.1.4...v1.0.0
 [v1.1.0]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v1.0.0...v1.1.0
+[v1.2.0]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v1.1.0...v1.2.0
