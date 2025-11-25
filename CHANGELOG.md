@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.0] - 2025-11-25
+### :sparkles: New Features
+- [`3099f9c`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/3099f9c25045f5331c80e255b05c442ecac4f60e) - better python compatability *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+- [`c90f575`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/c90f5752aab7f8a81af77aa5c7a8be4fadb6a6d4) - added down to 3.9.2 support *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+- [`b831522`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/b831522d32c017983bb76bdc04c308f67ddb2381) - added create method to client *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+- [`2f6f2e9`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/2f6f2e9c42bc4fba743d34243d8bb266373e5de9) - added none returns to indicate missing secrets/nochanges on sync *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+
+### :bug: Bug Fixes
+- [`23f2772`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/23f27727bfc3c864c83ec45bc8cba03edeadb8b6) - proper python version *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+- [`2a7e59f`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/2a7e59fecea8f6b440b8c6b961d589c003723f8d) - WHOOPSIES! missing precom hooks, grommit. WHOOPIDINKLES SILLY ME *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+
+### :wrench: Chores
+- [`35342bd`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/35342bd150948fa5296e0eadc2667f4fb5ee4131) - min python version 3.10 *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+- [`50fa138`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/50fa138416f83418d8d270c290dbf883fce98b13) - relock poetry *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+
+
 ## [v1.0.0] - 2025-08-13
 ### :sparkles: New Features
 - [`70868f1`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/70868f1deb1ce1d7018f2584d966959d1ceb1d20) - added testing *(commit by [@rippleFCL](https://github.com/rippleFCL))*
@@ -59,3 +75,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.1.4]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v0.1.3...v0.1.4
 [v2.0.0]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v0.1.4...v2.0.0
 [v1.0.0]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v0.1.4...v1.0.0
+[v1.1.0]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v1.0.0...v1.1.0
