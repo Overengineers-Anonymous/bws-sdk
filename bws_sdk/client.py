@@ -14,7 +14,7 @@ from typing import Any
 
 import requests
 
-from .bws_types import BitwardenSecret, Region
+from .bws_types import BitwardenSecret, BitwardenSecretCreate, Region
 from .crypto import (
     EncryptedValue,
 )
@@ -130,6 +130,42 @@ class BWSecretClient:
         except (UnicodeDecodeError, CryptographyError) as e:
             raise SecretParseError("Failed to decode secret value or key") from e
 
+    def _encrypt_secret(self, secret: BitwardenSecretCreate) -> BitwardenSecretCreate:
+        """
+        Encrypt a BitwardenSecretCreate.
+
+        Takes a BitwardenSecretCreate with plaintext key and value fields and returns
+        a new BitwardenSecretCreate with encrypted key and value fields.
+
+        Args:
+            secret (BitwardenSecretCreate): The plaintext secret to encrypt
+
+        Returns:
+            BitwardenSecretCreate: A new BitwardenSecretCreate with encrypted key and value
+
+        Raises:
+            SecretParseError: If the encryption process fails
+        """
+        try:
+            encrypted_key = EncryptedValue.from_data(
+                self.auth.org_enc_key, secret.key
+            ).to_str()
+            encrypted_value = EncryptedValue.from_data(
+                self.auth.org_enc_key, secret.value
+            ).to_str()
+            encrypted_note = EncryptedValue.from_data(
+                self.auth.org_enc_key, secret.note
+            ).to_str()
+            return BitwardenSecretCreate(
+                key=encrypted_key,
+                value=encrypted_value,
+                note=encrypted_note,
+                accessPoliciesRequests=secret.accessPoliciesRequests,
+                projectIds=secret.projectIds,
+            )
+        except CryptographyError as e:
+            raise SecretParseError("Failed to encrypt secret value or key") from e
+
     def _parse_secret(self, data: dict[str, Any]) -> BitwardenSecret:
         """
         Parse and decrypt a secret from API response data.
@@ -213,9 +249,9 @@ class BWSecretClient:
         if response.status_code == 401:
             raise UnauthorisedError(response.text)
         elif response.status_code == 404:
-            raise SecretNotFoundError("Secret not found")
+            raise SecretNotFoundError(response.text)
         elif response.status_code == 429:
-            raise APIRateLimitError("API rate limit exceeded")
+            raise APIRateLimitError(response.text)
         elif response.status_code != 200:
             raise ApiError(f"Unexpected error: {response.status_code} {response.text}")
 
@@ -270,3 +306,75 @@ class BWSecretClient:
             for secret in unc_secrets.get("data", []):
                 decrypted_secrets.append(self._parse_secret(secret))
         return decrypted_secrets
+
+    def create(
+        self, key: str, value: str, note: str, project_ids: list[str]
+    ) -> BitwardenSecret:
+        """
+        Create a new secret on the Bitwarden server.
+
+        Takes a BitwardenSecretCreate with plaintext key and value, encrypts it,
+        and creates it on the server. Returns the created secret with decrypted values.
+
+        Args:
+            key (str): The key for the secret
+            value (str): The value for the secret
+            note (str): A note for the secret
+            project_ids (list[str] | None): A list of project IDs the secret is associated with
+
+        Returns:
+            BitwardenSecret: The created secret with decrypted key and value
+
+        Raises:
+            ValueError: If the provided secret is not a BitwardenSecretCreate object
+            UnauthorisedError: If the request is unauthorized (HTTP 401)
+            ApiError: If the API returns a non-200 status code
+            SecretParseError: If the secret cannot be encrypted or the response cannot be parsed
+            SendRequestError: If the network request fails
+
+        Example:
+            ```python
+            new_secret = BitwardenSecretCreate(
+                key="api_key",
+                value="secret_value_123",
+                note="API key for external service"
+            )
+            created_secret = client.create(new_secret)
+            print(f"Created secret with ID: {created_secret.id}")
+            ```
+        """
+        if not isinstance(key, str):
+            raise ValueError("Key must be a string")
+        if not isinstance(value, str):
+            raise ValueError("Value must be a string")
+        if not isinstance(note, str):
+            raise ValueError("Note must be a string")
+        if not isinstance(project_ids, list):
+            raise ValueError("Project IDs must be a list of strings")
+        if not all(isinstance(pid, str) for pid in project_ids):
+            raise ValueError("Each project ID must be a string")
+        if len(project_ids) == 0:
+            raise ValueError("Project IDs list cannot be empty")
+        # Encrypt the secret before sending to API
+        secret = BitwardenSecretCreate(
+            key=key,
+            value=value,
+            note=note,
+            projectIds=project_ids,
+        )
+        encrypted_secret = self._encrypt_secret(secret)
+
+        try:
+            self._reload_auth()
+
+            # Prepare the request payload
+
+            response = self.session.post(
+                f"{self.region.api_url}/organizations/{self.auth.org_id}/secrets",
+                json=encrypted_secret.model_dump(exclude_none=True),
+            )
+        except requests.RequestException as e:
+            raise SendRequestError(f"Failed to send create request: {e}")
+
+        self.raise_errors(response)
+        return self._parse_secret(response.json())

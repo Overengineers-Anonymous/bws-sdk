@@ -104,6 +104,30 @@ except Exception as e:
     print(f"Error retrieving secret: {e}")
 ```
 
+### 5. Create a New Secret
+
+You can also create new secrets programmatically:
+
+```python
+try:
+    # Create a new secret
+    created_secret = client.create(
+        key="my_api_key",
+        value="secret_value_123",
+        note="API key for external service",
+        project_ids=["your-project-id-here"]  # Required: at least one project ID
+    )
+
+    print(f"Created secret with ID: {created_secret.id}")
+    print(f"Secret Name: {created_secret.key}")
+    print(f"Created At: {created_secret.creationDate}")
+
+except Exception as e:
+    print(f"Error creating secret: {e}")
+```
+
+> **Note**: The `project_ids` parameter is required and must contain at least one valid project ID. You can find project IDs in your Bitwarden Secrets Manager web interface.
+
 ## Environment Variables
 
 For better security, use environment variables to store sensitive information:
@@ -166,6 +190,20 @@ def main():
         if secret_id:
             secret = client.get_by_id(secret_id)
             print(f"Retrieved secret: {secret.key}")
+
+        # Create a new secret (example)
+        project_id = os.environ.get("PROJECT_ID")
+        if project_id:
+            try:
+                new_secret = client.create(
+                    key="example_secret",
+                    value="example_value_123",
+                    note="Created via BWS SDK example",
+                    project_ids=[project_id]
+                )
+                print(f"Created new secret: {new_secret.key} ({new_secret.id})")
+            except Exception as create_error:
+                print(f"Failed to create secret: {create_error}")
 
         # Sync recent changes (last 24 hours)
         yesterday = datetime.now() - timedelta(days=1)

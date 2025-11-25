@@ -12,7 +12,8 @@ BWS SDK provides a simple, Pythonic interface to interact with the Bitwarden Sec
 ## Features
 
 - **Secure Authentication**: Robust authentication with Bitwarden Secrets Manager
-- **Automatic Decryption**: Seamless decryption of secrets (encryption support coming soon)
+- **Secret Management**: Retrieve and create secrets programmatically
+- **Automatic Encryption/Decryption**: Seamless encryption and decryption of secrets
 - **State Persistence**: Optional state persistence for improved performance
 - **Multi-Region Support**: Support for different Bitwarden regions
 - **Synchronization**: Efficient secret updates with sync capabilities
@@ -40,6 +41,15 @@ client = BWSecretClient(
 # Retrieve a secret
 secret = client.get_by_id("your-secret-id")
 print(f"Secret: {secret.key} = {secret.value}")
+
+# Create a new secret
+new_secret = client.create(
+    key="api_key",
+    value="secret_value_123",
+    note="API key for external service",
+    project_ids=["your-project-id"]
+)
+print(f"Created: {new_secret.key} ({new_secret.id})")
 ```
 
 ## Installation
