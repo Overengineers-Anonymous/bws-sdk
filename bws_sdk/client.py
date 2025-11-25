@@ -233,10 +233,10 @@ class BWSecretClient:
         self.raise_errors(response)
         parsed_secret = self._parse_secret(response.json())
         ratelimit_info = RatelimitInfo(
-            limit=response.headers.get("X-RateLimit-Limit", "1m"),
-            remaining=int(response.headers.get("X-RateLimit-Remaining", 0)),
+            limit=response.headers.get("x-rate-limit-limit", "1m"),
+            remaining=int(response.headers.get("x-rate-limit-remaining", 0)),
             reset=datetime.fromisoformat(
-                response.headers.get("X-RateLimit-Reset", "1970-01-01T00:00:00Z")
+                response.headers.get("x-rate-limit-reset", "1970-01-01T00:00:00Z")
             ),
         )
         return BitwardenSecretRT(
@@ -327,10 +327,10 @@ class BWSecretClient:
         response_data = response.json()
         unc_secrets = response_data.get("secrets", {})
         ratelimit_info = RatelimitInfo(
-            limit=response.headers.get("X-RateLimit-Limit", "1m"),
-            remaining=int(response.headers.get("X-RateLimit-Remaining", 0)),
+            limit=response.headers.get("x-rate-limit-limit", "1m"),
+            remaining=int(response.headers.get("x-rate-limit-remaining", 0)),
             reset=datetime.fromisoformat(
-                response.headers.get("X-RateLimit-Reset", "1970-01-01T00:00:00Z")
+                response.headers.get("x-rate-limit-reset", "1970-01-01T00:00:00Z")
             ),
         )
         if response_data.get("hasChanges", False) is False:
