@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.0.0] - 2025-12-17
+### :wrench: Chores
+- [`d206be5`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/d206be5d0cb532b9b5e7e74ea0a085a7aa37047c) - bump version *(commit by [@rippleFCL](https://github.com/rippleFCL))*
+
+
 ## [v1.3.2] - 2025-11-26
 ### :wrench: Chores
 - [`b53a00a`](https://github.com/Overengineers-Anonymous/bws-sdk/commit/b53a00a3082d45a24667f77ee7b5ab3a61c3b2c9) - bump version to 1.3.2 *(commit by [@rippleFCL](https://github.com/rippleFCL))*
@@ -103,3 +108,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v1.3.0]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v1.2.0...v1.3.0
 [v1.3.1]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v1.3.0...v1.3.1
 [v1.3.2]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v1.3.1...v1.3.2
+[v2.0.0]: https://github.com/Overengineers-Anonymous/bws-sdk/compare/v1.3.2...v2.0.0
