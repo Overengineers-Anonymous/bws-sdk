@@ -3,7 +3,13 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from bws_sdk.bws_types import BitwardenSecret, BitwardenSecretRT, BitwardenSync, Region
+from bws_sdk.bws_types import (
+    BitwardenSecret,
+    BitwardenSecretResponse,
+    BitwardenSecretRT,
+    BitwardenSync,
+    Region,
+)
 from bws_sdk.client import BWSecretClient
 from bws_sdk.crypto import SymmetricCryptoKey
 from bws_sdk.errors import ApiError, SecretParseError, UnauthorisedError
@@ -32,12 +38,28 @@ def region():
 
 
 @pytest.fixture
-def mock_secret():
-    return BitwardenSecret(
+def mock_secret_response():
+    """Mock BitwardenSecretResponse for API responses"""
+    return BitwardenSecretResponse(
         id="secret_id",
         organizationId="org_id",
         key="encrypted_key",
         value="encrypted_value",
+        projects=[],
+        creationDate=datetime.now(),
+        revisionDate=datetime.now(),
+    )
+
+
+@pytest.fixture
+def mock_secret():
+    """Mock BitwardenSecret for decrypted responses"""
+    return BitwardenSecret(
+        id="secret_id",
+        organizationId="org_id",
+        key="decrypted_key",
+        value="decrypted_value",
+        project=None,
         creationDate=datetime.now(),
         revisionDate=datetime.now(),
     )
@@ -70,7 +92,7 @@ def test_client_initialization_invalid_state_file():
 
 
 @patch("bws_sdk.client.Auth.from_token")
-def test_get_by_id_success(mock_auth, region, mock_secret):
+def test_get_by_id_success(mock_auth, region, mock_secret_response):
     mock_auth.return_value.bearer_token = "test_token"
     mock_auth.return_value.org_enc_key = MagicMock()
 
@@ -90,17 +112,18 @@ def test_get_by_id_success(mock_auth, region, mock_secret):
             "organizationId": "org_id",
             "key": "encrypted_key",
             "value": "encrypted_value",
+            "projects": [],
             "creationDate": "2023-01-01T00:00:00Z",
             "revisionDate": "2023-01-01T00:00:00Z",
         }
         mock_get.return_value = mock_response
 
         with patch.object(client, "_parse_secret") as mock_parse:
-            mock_parse.return_value = mock_secret
+            mock_parse.return_value = mock_secret_response
             result = client.get_by_id("secret_id")
             assert result is not None
             assert isinstance(result, BitwardenSecretRT)
-            assert result.id == mock_secret.id
+            assert result.id == mock_secret_response.id
             assert result.ratelimit.remaining == 100
             mock_get.assert_called_once_with(f"{region.api_url}/secrets/secret_id")
 
@@ -162,7 +185,7 @@ def test_get_by_id_api_error(mock_auth, region):
 
 
 @patch("bws_sdk.client.Auth.from_token")
-def test_sync_success(mock_auth, region, mock_secret):
+def test_sync_success(mock_auth, region, mock_secret_response):
     mock_auth.return_value.bearer_token = "test_token"
     mock_auth.return_value.org_id = "org_id"
     client = BWSecretClient(region, "access_token")
@@ -185,6 +208,7 @@ def test_sync_success(mock_auth, region, mock_secret):
                         "organizationId": "org_id",
                         "key": "encrypted_key",
                         "value": "encrypted_value",
+                        "projects": [],
                         "creationDate": "2023-01-01T00:00:00Z",
                         "revisionDate": "2023-01-01T00:00:00Z",
                     }
@@ -194,19 +218,19 @@ def test_sync_success(mock_auth, region, mock_secret):
         mock_get.return_value = mock_response
 
         with patch.object(client, "_parse_secret") as mock_parse:
-            mock_parse.return_value = mock_secret
+            mock_parse.return_value = mock_secret_response
             last_sync = datetime(2023, 1, 1)
             result = client.sync(last_sync)
             assert result is not None
             assert isinstance(result, BitwardenSync)
             assert result.secrets is not None
             assert len(result.secrets) == 1
-            assert result.secrets[0] == mock_secret
+            assert result.secrets[0] == mock_secret_response
             assert result.ratelimit.remaining == 95
 
 
 @patch("bws_sdk.client.Auth.from_token")
-def test_sync_no_changes(mock_auth, region, mock_secret):
+def test_sync_no_changes(mock_auth, region, mock_secret_response):
     mock_auth.return_value.bearer_token = "test_token"
     mock_auth.return_value.org_id = "org_id"
     client = BWSecretClient(region, "access_token")
@@ -227,7 +251,7 @@ def test_sync_no_changes(mock_auth, region, mock_secret):
         mock_get.return_value = mock_response
 
         with patch.object(client, "_parse_secret") as mock_parse:
-            mock_parse.return_value = mock_secret
+            mock_parse.return_value = mock_secret_response
             last_sync = datetime(2023, 1, 1)
             result = client.sync(last_sync)
             assert result is not None
@@ -287,7 +311,9 @@ def test_sync_empty_response(mock_auth, region):
 
 @patch("bws_sdk.client.Auth.from_token")
 @patch("bws_sdk.client.EncryptedValue")
-def test_decrypt_secret_success(mock_encrypted_value, mock_auth, region, mock_secret):
+def test_decrypt_secret_success(
+    mock_encrypted_value, mock_auth, region, mock_secret_response
+):
     mock_auth.return_value.org_enc_key = MagicMock()
     client = BWSecretClient(region, "access_token")
 
@@ -295,7 +321,7 @@ def test_decrypt_secret_success(mock_encrypted_value, mock_auth, region, mock_se
     mock_decrypt.decode.return_value = "decrypted_value"
     mock_encrypted_value.from_str.return_value.decrypt.return_value = mock_decrypt
 
-    result = client._decrypt_secret(mock_secret)
+    result = client._decrypt_secret(mock_secret_response)
     assert result.key == "decrypted_value"
     assert result.value == "decrypted_value"
 
@@ -303,7 +329,7 @@ def test_decrypt_secret_success(mock_encrypted_value, mock_auth, region, mock_se
 @patch("bws_sdk.client.Auth.from_token")
 @patch("bws_sdk.client.EncryptedValue")
 def test_decrypt_secret_unicode_error(
-    mock_encrypted_value, mock_auth, region, mock_secret
+    mock_encrypted_value, mock_auth, region, mock_secret_response
 ):
     mock_auth.return_value.org_enc_key = MagicMock()
     client = BWSecretClient(region, "access_token")
@@ -313,12 +339,12 @@ def test_decrypt_secret_unicode_error(
     )
 
     with pytest.raises(SecretParseError, match="Failed to decode secret value or key"):
-        client._decrypt_secret(mock_secret)
+        client._decrypt_secret(mock_secret_response)
 
 
 # Test create method
 @patch("bws_sdk.client.Auth.from_token")
-def test_create_success(mock_auth, region, mock_secret):
+def test_create_success(mock_auth, region, mock_secret_response):
     """Test successful secret creation"""
     mock_auth.return_value.bearer_token = "test_token"
     mock_auth.return_value.org_id = "org_id"
@@ -327,11 +353,18 @@ def test_create_success(mock_auth, region, mock_secret):
     with patch.object(client.session, "post") as mock_post:
         mock_response = Mock()
         mock_response.status_code = 200
+        headers_dict = {
+            "x-rate-limit-limit": "1m",
+            "x-rate-limit-remaining": "100",
+            "x-rate-limit-reset": "2023-01-01T00:00:00Z",
+        }
+        mock_response.headers.get = lambda k, d=None: headers_dict.get(k, d)
         mock_response.json.return_value = {
             "id": "created_secret_id",
             "organizationId": "org_id",
             "key": "encrypted_key",
             "value": "encrypted_value",
+            "projects": [],
             "creationDate": "2023-01-01T00:00:00Z",
             "revisionDate": "2023-01-01T00:00:00Z",
         }
@@ -342,68 +375,27 @@ def test_create_success(mock_auth, region, mock_secret):
                 "key": "encrypted",
                 "value": "encrypted",
                 "note": "encrypted",
-                "projectIds": ["weh"],
+                "projectIds": ["project1"],
             }
 
             with patch.object(client, "_parse_secret") as mock_parse:
-                mock_parse.return_value = mock_secret
+                mock_parse.return_value = mock_secret_response
 
                 result = client.create(
-                    "test_key", "test_value", "test_note", ["project1"]
+                    "test_key", "test_value", "test_note", "project1"
                 )
 
-                assert result == mock_secret
+                assert result is not None
+                assert isinstance(result, BitwardenSecretRT)
                 mock_post.assert_called_once_with(
                     f"{region.api_url}/organizations/org_id/secrets",
                     json={
                         "key": "encrypted",
                         "value": "encrypted",
                         "note": "encrypted",
-                        "projectIds": ["weh"],
+                        "projectIds": ["project1"],
                     },
                 )
-
-
-@patch("bws_sdk.client.Auth.from_token")
-def test_create_with_project_ids(mock_auth, region, mock_secret):
-    """Test secret creation with project IDs"""
-    mock_auth.return_value.bearer_token = "test_token"
-    mock_auth.return_value.org_id = "org_id"
-    client = BWSecretClient(region, "access_token")
-
-    with patch.object(client.session, "post") as mock_post:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "id": "created_secret_id",
-            "organizationId": "org_id",
-            "key": "encrypted_key",
-            "value": "encrypted_value",
-            "creationDate": "2023-01-01T00:00:00Z",
-            "revisionDate": "2023-01-01T00:00:00Z",
-        }
-        mock_post.return_value = mock_response
-
-        with patch.object(client, "_encrypt_secret") as mock_encrypt:
-            mock_encrypt.return_value.model_dump.return_value = {
-                "key": "encrypted",
-                "value": "encrypted",
-                "note": "encrypted",
-                "projectIds": ["proj1", "proj2"],
-            }
-
-            with patch.object(client, "_parse_secret") as mock_parse:
-                mock_parse.return_value = mock_secret
-
-                result = client.create(
-                    "test_key", "test_value", "test_note", ["proj1", "proj2"]
-                )
-
-                assert result == mock_secret
-                mock_encrypt.assert_called_once()
-                # Verify that the BitwardenSecretCreate was created with projectIds
-                created_secret = mock_encrypt.call_args[0][0]
-                assert created_secret.projectIds == ["proj1", "proj2"]
 
 
 def test_create_invalid_key(region):
@@ -411,7 +403,7 @@ def test_create_invalid_key(region):
     with patch("bws_sdk.client.Auth.from_token"):
         client = BWSecretClient(region, "access_token")
         with pytest.raises(ValueError, match="Key must be a string"):
-            client.create(123, "test_value", "test_note", ["project1"])
+            client.create(123, "test_value", "test_note", "project1")
 
 
 def test_create_invalid_value(region):
@@ -419,7 +411,7 @@ def test_create_invalid_value(region):
     with patch("bws_sdk.client.Auth.from_token"):
         client = BWSecretClient(region, "access_token")
         with pytest.raises(ValueError, match="Value must be a string"):
-            client.create("test_key", 123, "test_note", ["project1"])
+            client.create("test_key", 123, "test_note", "project1")
 
 
 def test_create_invalid_note(region):
@@ -427,31 +419,15 @@ def test_create_invalid_note(region):
     with patch("bws_sdk.client.Auth.from_token"):
         client = BWSecretClient(region, "access_token")
         with pytest.raises(ValueError, match="Note must be a string"):
-            client.create("test_key", "test_value", 123, ["project1"])
+            client.create("test_key", "test_value", 123, "project1")
 
 
-def test_create_invalid_project_ids_type(region):
-    """Test create with invalid project_ids type"""
+def test_create_invalid_project_id_type(region):
+    """Test create with invalid project_id type"""
     with patch("bws_sdk.client.Auth.from_token"):
         client = BWSecretClient(region, "access_token")
-        with pytest.raises(ValueError, match="Project IDs must be a list of strings"):
-            client.create("test_key", "test_value", "test_note", "not_a_list")
-
-
-def test_create_invalid_project_id_elements(region):
-    """Test create with invalid project_id elements"""
-    with patch("bws_sdk.client.Auth.from_token"):
-        client = BWSecretClient(region, "access_token")
-        with pytest.raises(ValueError, match="Each project ID must be a string"):
-            client.create("test_key", "test_value", "test_note", ["project1", 123])
-
-
-def test_create_empty_project_ids(region):
-    """Test create with empty project_ids list"""
-    with patch("bws_sdk.client.Auth.from_token"):
-        client = BWSecretClient(region, "access_token")
-        with pytest.raises(ValueError, match="Project IDs list cannot be empty"):
-            client.create("test_key", "test_value", "test_note", [])
+        with pytest.raises(ValueError, match="Project ID must be a string"):
+            client.create("test_key", "test_value", "test_note", 123)
 
 
 @patch("bws_sdk.client.Auth.from_token")
@@ -471,7 +447,7 @@ def test_create_unauthorized(mock_auth, region):
             mock_encrypt.return_value.model_dump.return_value = {"key": "encrypted"}
 
             with pytest.raises(UnauthorisedError):
-                client.create("test_key", "test_value", "test_note", ["project1"])
+                client.create("test_key", "test_value", "test_note", "project1")
 
 
 @patch("bws_sdk.client.Auth.from_token")
@@ -491,7 +467,7 @@ def test_create_api_error(mock_auth, region):
             mock_encrypt.return_value.model_dump.return_value = {"key": "encrypted"}
 
             with pytest.raises(ApiError):
-                client.create("test_key", "test_value", "test_note", ["project1"])
+                client.create("test_key", "test_value", "test_note", "project1")
 
 
 @patch("bws_sdk.client.Auth.from_token")
@@ -512,7 +488,7 @@ def test_create_network_error(mock_requests, mock_auth, region):
         from bws_sdk.errors import SendRequestError
 
         with pytest.raises(SendRequestError, match="Failed to send create request"):
-            client.create("test_key", "test_value", "test_note", ["project1"])
+            client.create("test_key", "test_value", "test_note", "project1")
 
 
 @patch("bws_sdk.client.Auth.from_token")
@@ -525,16 +501,40 @@ def test_create_encrypt_secret_called_correctly(mock_auth, region):
     with patch.object(client.session, "post") as mock_post:
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"id": "test"}
+        headers_dict = {
+            "x-rate-limit-limit": "1m",
+            "x-rate-limit-remaining": "100",
+            "x-rate-limit-reset": "2023-01-01T00:00:00Z",
+        }
+        mock_response.headers.get = lambda k, d=None: headers_dict.get(k, d)
+        mock_response.json.return_value = {
+            "id": "test",
+            "organizationId": "org_id",
+            "key": "enc_key",
+            "value": "enc_value",
+            "projects": [],
+            "creationDate": "2023-01-01T00:00:00Z",
+            "revisionDate": "2023-01-01T00:00:00Z",
+        }
         mock_post.return_value = mock_response
 
         with patch.object(client, "_encrypt_secret") as mock_encrypt:
             mock_encrypt.return_value.model_dump.return_value = {"test": "data"}
 
             with patch.object(client, "_parse_secret") as mock_parse:
-                mock_parse.return_value = Mock()
+                from bws_sdk.bws_types import BitwardenSecretResponse
 
-                client.create("test_key", "test_value", "test_note", ["proj1"])
+                mock_parse.return_value = BitwardenSecretResponse(
+                    id="test",
+                    organizationId="org_id",
+                    key="decrypted_key",
+                    value="decrypted_value",
+                    projects=[],
+                    creationDate=datetime(2023, 1, 1),
+                    revisionDate=datetime(2023, 1, 1),
+                )
+
+                client.create("test_key", "test_value", "test_note", "proj1")
 
                 # Verify _encrypt_secret was called with correct BitwardenSecretCreate
                 mock_encrypt.assert_called_once()
@@ -559,15 +559,232 @@ def test_create_reload_auth_called(mock_auth, region):
     with patch.object(client.session, "post") as mock_post:
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"id": "test"}
+        headers_dict = {
+            "x-rate-limit-limit": "1m",
+            "x-rate-limit-remaining": "100",
+            "x-rate-limit-reset": "2023-01-01T00:00:00Z",
+        }
+        mock_response.headers.get = lambda k, d=None: headers_dict.get(k, d)
+        mock_response.json.return_value = {
+            "id": "test",
+            "organizationId": "org_id",
+            "key": "enc_key",
+            "value": "enc_value",
+            "projects": [],
+            "creationDate": "2023-01-01T00:00:00Z",
+            "revisionDate": "2023-01-01T00:00:00Z",
+        }
         mock_post.return_value = mock_response
 
         with patch.object(client, "_encrypt_secret") as mock_encrypt:
             mock_encrypt.return_value.model_dump.return_value = {"test": "data"}
 
             with patch.object(client, "_parse_secret") as mock_parse:
-                mock_parse.return_value = Mock()
+                from bws_sdk.bws_types import BitwardenSecretResponse
+
+                mock_parse.return_value = BitwardenSecretResponse(
+                    id="test",
+                    organizationId="org_id",
+                    key="decrypted_key",
+                    value="decrypted_value",
+                    projects=[],
+                    creationDate=datetime(2023, 1, 1),
+                    revisionDate=datetime(2023, 1, 1),
+                )
 
                 with patch.object(client, "_reload_auth") as mock_reload:
-                    client.create("test_key", "test_value", "test_note", ["project1"])
+                    client.create("test_key", "test_value", "test_note", "project1")
                     mock_reload.assert_called_once()
+
+
+# Update method tests
+@patch("bws_sdk.client.Auth.from_token")
+def test_update_success(mock_auth, region, mock_secret_response):
+    """Test successful secret update"""
+    mock_auth.return_value.bearer_token = "test_token"
+    mock_auth.return_value.org_id = "org_id"
+    client = BWSecretClient(region, "access_token")
+
+    with patch.object(client.session, "put") as mock_put:
+        mock_response = Mock()
+        mock_response.status_code = 200
+        headers_dict = {
+            "x-rate-limit-limit": "1m",
+            "x-rate-limit-remaining": "90",
+            "x-rate-limit-reset": "2023-01-01T00:00:00Z",
+        }
+        mock_response.headers.get = lambda k, d=None: headers_dict.get(k, d)
+        mock_response.json.return_value = {
+            "id": "secret_id",
+            "organizationId": "org_id",
+            "key": "updated_key",
+            "value": "updated_value",
+            "projects": [],
+            "creationDate": "2023-01-01T00:00:00Z",
+            "revisionDate": "2023-01-02T00:00:00Z",
+        }
+        mock_put.return_value = mock_response
+
+        with patch.object(client, "_encrypt_secret") as mock_encrypt:
+            mock_encrypt.return_value.model_dump.return_value = {
+                "key": "encrypted_updated",
+                "value": "encrypted_updated",
+                "note": "encrypted_note",
+                "projectIds": ["project1"],
+            }
+
+            with patch.object(client, "_parse_secret") as mock_parse:
+                mock_parse.return_value = mock_secret_response
+
+                result = client.update(
+                    "secret_id",
+                    "updated_key",
+                    "updated_value",
+                    "updated_note",
+                    "project1",
+                )
+
+                assert result is not None
+                assert isinstance(result, BitwardenSecretRT)
+                mock_put.assert_called_once_with(
+                    f"{region.api_url}/secrets/secret_id",
+                    json={
+                        "key": "encrypted_updated",
+                        "value": "encrypted_updated",
+                        "note": "encrypted_note",
+                        "projectIds": ["project1"],
+                    },
+                )
+
+
+def test_update_invalid_secret_id(region):
+    """Test update with invalid secret_id type"""
+    with patch("bws_sdk.client.Auth.from_token"):
+        client = BWSecretClient(region, "access_token")
+        with pytest.raises(ValueError, match="Secret ID must be a string"):
+            client.update(123, "key", "value", "note", "project1")
+
+
+def test_update_invalid_key(region):
+    """Test update with invalid key type"""
+    with patch("bws_sdk.client.Auth.from_token"):
+        client = BWSecretClient(region, "access_token")
+        with pytest.raises(ValueError, match="Key must be a string"):
+            client.update("secret_id", 123, "value", "note", "project1")
+
+
+def test_update_invalid_value(region):
+    """Test update with invalid value type"""
+    with patch("bws_sdk.client.Auth.from_token"):
+        client = BWSecretClient(region, "access_token")
+        with pytest.raises(ValueError, match="Value must be a string"):
+            client.update("secret_id", "key", 123, "note", "project1")
+
+
+def test_update_invalid_note(region):
+    """Test update with invalid note type"""
+    with patch("bws_sdk.client.Auth.from_token"):
+        client = BWSecretClient(region, "access_token")
+        with pytest.raises(ValueError, match="Note must be a string"):
+            client.update("secret_id", "key", "value", 123, "project1")
+
+
+def test_update_invalid_project_id(region):
+    """Test update with invalid project_id type"""
+    with patch("bws_sdk.client.Auth.from_token"):
+        client = BWSecretClient(region, "access_token")
+        with pytest.raises(ValueError, match="Project ID must be a string"):
+            client.update("secret_id", "key", "value", "note", 123)
+
+
+@patch("bws_sdk.client.Auth.from_token")
+def test_update_unauthorized(mock_auth, region):
+    """Test update with unauthorized response"""
+    mock_auth.return_value.bearer_token = "test_token"
+    mock_auth.return_value.org_id = "org_id"
+    client = BWSecretClient(region, "access_token")
+
+    with patch.object(client.session, "put") as mock_put:
+        mock_response = Mock()
+        mock_response.status_code = 401
+        mock_response.text = "Unauthorized"
+        mock_put.return_value = mock_response
+
+        with patch.object(client, "_encrypt_secret") as mock_encrypt:
+            mock_encrypt.return_value.model_dump.return_value = {"key": "encrypted"}
+
+            with pytest.raises(UnauthorisedError):
+                client.update("secret_id", "key", "value", "note", "project1")
+
+
+# Delete method tests
+@patch("bws_sdk.client.Auth.from_token")
+def test_delete_success(mock_auth, region):
+    """Test successful secret deletion"""
+    mock_auth.return_value.bearer_token = "test_token"
+    mock_auth.return_value.org_id = "org_id"
+    client = BWSecretClient(region, "access_token")
+
+    with patch.object(client.session, "post") as mock_post:
+        mock_response = Mock()
+        mock_response.status_code = 200
+        headers_dict = {
+            "x-rate-limit-limit": "1m",
+            "x-rate-limit-remaining": "85",
+            "x-rate-limit-reset": "2023-01-01T00:00:00Z",
+        }
+        mock_response.headers.get = lambda k, d=None: headers_dict.get(k, d)
+        mock_response.json.return_value = {}
+        mock_post.return_value = mock_response
+
+        result = client.delete(["secret_id_1", "secret_id_2"])
+
+        from bws_sdk.bws_types import RatelimitInfo
+
+        assert isinstance(result, RatelimitInfo)
+        assert result.remaining == 85
+        mock_post.assert_called_once_with(
+            f"{region.api_url}/secrets/delete",
+            json=["secret_id_1", "secret_id_2"],
+        )
+
+
+def test_delete_invalid_type(region):
+    """Test delete with invalid secret_ids type"""
+    with patch("bws_sdk.client.Auth.from_token"):
+        client = BWSecretClient(region, "access_token")
+        with pytest.raises(ValueError, match="Secret IDs must be a list of strings"):
+            client.delete("not_a_list")
+
+
+def test_delete_invalid_element(region):
+    """Test delete with invalid secret_id elements"""
+    with patch("bws_sdk.client.Auth.from_token"):
+        client = BWSecretClient(region, "access_token")
+        with pytest.raises(ValueError, match="Each secret ID must be a string"):
+            client.delete(["secret_id", 123])
+
+
+def test_delete_empty_list(region):
+    """Test delete with empty list"""
+    with patch("bws_sdk.client.Auth.from_token"):
+        client = BWSecretClient(region, "access_token")
+        with pytest.raises(ValueError, match="Secret IDs list cannot be empty"):
+            client.delete([])
+
+
+@patch("bws_sdk.client.Auth.from_token")
+def test_delete_unauthorized(mock_auth, region):
+    """Test delete with unauthorized response"""
+    mock_auth.return_value.bearer_token = "test_token"
+    mock_auth.return_value.org_id = "org_id"
+    client = BWSecretClient(region, "access_token")
+
+    with patch.object(client.session, "post") as mock_post:
+        mock_response = Mock()
+        mock_response.status_code = 401
+        mock_response.text = "Unauthorized"
+        mock_post.return_value = mock_response
+
+        with pytest.raises(UnauthorisedError):
+            client.delete(["secret_id"])

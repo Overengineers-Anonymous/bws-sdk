@@ -15,8 +15,9 @@ from typing import Any
 import requests
 
 from .bws_types import (
-    BitwardenSecret,
+    BitwardenSecProject,
     BitwardenSecretCreate,
+    BitwardenSecretResponse,
     BitwardenSecretRT,
     BitwardenSync,
     RatelimitInfo,
@@ -105,7 +106,9 @@ class BWSecretClient:
             }
         )
 
-    def _decrypt_secret(self, secret: BitwardenSecret) -> BitwardenSecret:
+    def _decrypt_secret(
+        self, secret: BitwardenSecretResponse
+    ) -> BitwardenSecretResponse:
         """
         Decrypt an encrypted BitwardenSecret.
 
@@ -122,7 +125,18 @@ class BWSecretClient:
             SecretParseError: If the decrypted data cannot be decoded as UTF-8
         """
         try:
-            return BitwardenSecret(
+            projects_ids: list[BitwardenSecProject] = []
+            for project in secret.projects:
+                new_project = BitwardenSecProject(
+                    id=project.id,
+                    name=EncryptedValue.from_str(project.name)
+                    .decrypt(self.auth.org_enc_key)
+                    .decode("utf-8")
+                    if project.name
+                    else None,
+                )
+                projects_ids.append(new_project)
+            return BitwardenSecretResponse(
                 id=secret.id,
                 organizationId=secret.organizationId,
                 key=EncryptedValue.from_str(secret.key)
@@ -131,6 +145,7 @@ class BWSecretClient:
                 value=EncryptedValue.from_str(secret.value)
                 .decrypt(self.auth.org_enc_key)
                 .decode("utf-8"),
+                projects=projects_ids,
                 creationDate=secret.creationDate,
                 revisionDate=secret.revisionDate,
             )
@@ -173,7 +188,7 @@ class BWSecretClient:
         except CryptographyError as e:
             raise SecretParseError("Failed to encrypt secret value or key") from e
 
-    def _parse_secret(self, data: dict[str, Any]) -> BitwardenSecret:
+    def _parse_secret(self, data: dict[str, Any]) -> BitwardenSecretResponse:
         """
         Parse and decrypt a secret from API response data.
 
@@ -189,8 +204,84 @@ class BWSecretClient:
         Raises:
             SecretParseError: If the secret cannot be decrypted or decoded
         """
-        undec_secret = BitwardenSecret.model_validate(data)
+        undec_secret = BitwardenSecretResponse.model_validate(data)
         return self._decrypt_secret(undec_secret)
+
+    def _parse_secret_rt(self, response: requests.Response) -> BitwardenSecretRT:
+        """
+        Parse and decrypt a secret from an HTTP response.
+
+        Validates the API response data into a BitwardenSecret model
+        and then decrypts the secret's key and value fields.
+
+        Args:
+            response (requests.Response): The HTTP response containing secret data
+        Returns:
+            BitwardenSecret: The parsed and decrypted secret
+        Raises:
+            SecretParseError: If the secret cannot be decrypted or decoded
+        """
+        parsed_secret = self._parse_secret(response.json())
+        project = None
+        if parsed_secret.projects and len(parsed_secret.projects) > 0:
+            project = parsed_secret.projects[0]
+
+        return BitwardenSecretRT(
+            id=parsed_secret.id,
+            organizationId=parsed_secret.organizationId,
+            key=parsed_secret.key,
+            value=parsed_secret.value,
+            creationDate=parsed_secret.creationDate,
+            revisionDate=parsed_secret.revisionDate,
+            project=project,
+            ratelimit=self._get_ratelimit_info(response),
+        )
+
+    def raise_errors(self, response: requests.Response) -> None:
+        """
+        Raise appropriate exceptions based on HTTP response status codes.
+
+        Analyzes the HTTP response and raises specific BWS SDK exceptions
+        based on the status code to provide meaningful error handling.
+
+        Args:
+            response (requests.Response): The HTTP response object to analyze
+
+        Raises:
+            UnauthorisedError: If the response status code is 401 (Unauthorized)
+            SecretNotFoundError: If the response status code is 404 (Not Found)
+            APIRateLimitError: If the response status code is 429 (Too Many Requests)
+            ApiError: For any other non-200 status codes
+
+        Note:
+            This method does not return anything when the status code is 200.
+            It only raises exceptions for error status codes.
+        """
+        if response.status_code == 401:
+            raise UnauthorisedError(response.text)
+        elif response.status_code == 404:
+            raise SecretNotFoundError(response.text)
+        elif response.status_code == 429:
+            raise APIRateLimitError(response.text)
+        elif response.status_code != 200:
+            raise ApiError(f"Unexpected error: {response.status_code} {response.text}")
+
+    def _get_ratelimit_info(self, response: requests.Response) -> RatelimitInfo:
+        """
+        Extract rate limit information from HTTP response headers.
+
+        Args:
+            response (requests.Response): The HTTP response object to extract headers from
+        Returns:
+            RatelimitInfo: The extracted rate limit information
+        """
+        return RatelimitInfo(
+            limit=response.headers.get("x-rate-limit-limit", "1m"),
+            remaining=int(response.headers.get("x-rate-limit-remaining", 0)),
+            reset=datetime.fromisoformat(
+                response.headers.get("x-rate-limit-reset", "1970-01-01T00:00:00Z")
+            ),
+        )
 
     def get_by_id(self, secret_id: str) -> BitwardenSecretRT | None:
         """
@@ -231,52 +322,7 @@ class BWSecretClient:
         if response.status_code == 404:
             return None
         self.raise_errors(response)
-        parsed_secret = self._parse_secret(response.json())
-        ratelimit_info = RatelimitInfo(
-            limit=response.headers.get("x-rate-limit-limit", "1m"),
-            remaining=int(response.headers.get("x-rate-limit-remaining", 0)),
-            reset=datetime.fromisoformat(
-                response.headers.get("x-rate-limit-reset", "1970-01-01T00:00:00Z")
-            ),
-        )
-        return BitwardenSecretRT(
-            id=parsed_secret.id,
-            organizationId=parsed_secret.organizationId,
-            key=parsed_secret.key,
-            value=parsed_secret.value,
-            creationDate=parsed_secret.creationDate,
-            revisionDate=parsed_secret.revisionDate,
-            ratelimit=ratelimit_info,
-        )
-
-    def raise_errors(self, response: requests.Response) -> None:
-        """
-        Raise appropriate exceptions based on HTTP response status codes.
-
-        Analyzes the HTTP response and raises specific BWS SDK exceptions
-        based on the status code to provide meaningful error handling.
-
-        Args:
-            response (requests.Response): The HTTP response object to analyze
-
-        Raises:
-            UnauthorisedError: If the response status code is 401 (Unauthorized)
-            SecretNotFoundError: If the response status code is 404 (Not Found)
-            APIRateLimitError: If the response status code is 429 (Too Many Requests)
-            ApiError: For any other non-200 status codes
-
-        Note:
-            This method does not return anything when the status code is 200.
-            It only raises exceptions for error status codes.
-        """
-        if response.status_code == 401:
-            raise UnauthorisedError(response.text)
-        elif response.status_code == 404:
-            raise SecretNotFoundError(response.text)
-        elif response.status_code == 429:
-            raise APIRateLimitError(response.text)
-        elif response.status_code != 200:
-            raise ApiError(f"Unexpected error: {response.status_code} {response.text}")
+        return self._parse_secret_rt(response)
 
     def sync(self, last_synced_date: datetime) -> BitwardenSync:
         """
@@ -340,11 +386,13 @@ class BWSecretClient:
         if unc_secrets:
             for secret in unc_secrets.get("data", []):
                 decrypted_secrets.append(self._parse_secret(secret))
-        return BitwardenSync(secrets=decrypted_secrets, ratelimit=ratelimit_info)
+        return BitwardenSync(
+            secrets=decrypted_secrets, ratelimit=self._get_ratelimit_info(response)
+        )
 
     def create(
-        self, key: str, value: str, note: str, project_ids: list[str]
-    ) -> BitwardenSecret:
+        self, key: str, value: str, note: str, project_id: str
+    ) -> BitwardenSecretRT:
         """
         Create a new secret on the Bitwarden server.
 
@@ -384,18 +432,15 @@ class BWSecretClient:
             raise ValueError("Value must be a string")
         if not isinstance(note, str):
             raise ValueError("Note must be a string")
-        if not isinstance(project_ids, list):
-            raise ValueError("Project IDs must be a list of strings")
-        if not all(isinstance(pid, str) for pid in project_ids):
-            raise ValueError("Each project ID must be a string")
-        if len(project_ids) == 0:
-            raise ValueError("Project IDs list cannot be empty")
+        if not isinstance(project_id, str):
+            raise ValueError("Project ID must be a string")
+
         # Encrypt the secret before sending to API
         secret = BitwardenSecretCreate(
             key=key,
             value=value,
             note=note,
-            projectIds=project_ids,
+            projectIds=[project_id],
         )
         encrypted_secret = self._encrypt_secret(secret)
 
@@ -412,4 +457,119 @@ class BWSecretClient:
             raise SendRequestError(f"Failed to send create request: {e}")
 
         self.raise_errors(response)
-        return self._parse_secret(response.json())
+        return self._parse_secret_rt(response)
+
+    def update(
+        self, secret_id: str, key: str, value: str, note: str, project_id: str
+    ) -> BitwardenSecretRT:
+        """
+        Update an existing secret on the Bitwarden server.
+
+        Args:
+            secret_id (str): The unique identifier (UUID) of the secret to update
+            key (str): The key for the secret
+            value (str): The value for the secret
+            note (str): A note for the secret
+            project_ids (list[str] | None): A list of project IDs the secret is associated with
+
+        Returns:
+            BitwardenSecret: The updated secret with decrypted key and value
+
+        Raises:
+            ValueError: If the provided secret is not a BitwardenSecretUpdate object
+            UnauthorisedError: If the request is unauthorized (HTTP 401)
+            ApiError: If the API returns a non-200 status code
+            SecretParseError: If the secret cannot be encrypted or the response cannot be parsed
+            SendRequestError: If the network request fails
+
+        Example:
+            ```python
+            updated_secret = BitwardenSecretUpdate(
+                key="api_key",
+                value="new_secret_value_456",
+                note="Updated API key for external service"
+            )
+            result_secret = client.update(updated_secret)
+            print(f"Updated secret with ID: {result_secret.id}")
+            ```
+        """
+        if not isinstance(secret_id, str):
+            raise ValueError("Secret ID must be a string")
+        if not isinstance(key, str):
+            raise ValueError("Key must be a string")
+        if not isinstance(value, str):
+            raise ValueError("Value must be a string")
+        if not isinstance(note, str):
+            raise ValueError("Note must be a string")
+        if not isinstance(project_id, str):
+            raise ValueError("Project ID must be a string")
+
+        # Encrypt the secret before sending to API
+        secret = BitwardenSecretCreate(
+            key=key,
+            value=value,
+            note=note,
+            projectIds=[project_id],
+        )
+        encrypted_secret = self._encrypt_secret(secret)
+
+        try:
+            self._reload_auth()
+
+            # Prepare the request payload
+
+            response = self.session.put(
+                f"{self.region.api_url}/secrets/{secret_id}",
+                json=encrypted_secret.model_dump(exclude_none=True),
+            )
+        except requests.RequestException as e:
+            raise SendRequestError(f"Failed to send create request: {e}")
+
+        self.raise_errors(response)
+        return self._parse_secret_rt(response)
+
+    def delete(self, secret_ids: list[str]) -> RatelimitInfo:
+        """
+        Delete secrets by their unique identifiers.
+
+        Makes an authenticated request to the BWS API to delete specific secrets
+        by their UUIDs.
+
+        Args:
+            secret_ids (list[str]): A list of unique identifiers (UUIDs) of the secrets to delete
+
+        Returns:
+            None
+
+        Raises:
+            ValueError: If secret_ids is not a list of strings
+            UnauthorisedError: If the request is unauthorized (HTTP 401)
+            ApiError: If the API returns a non-200 status code
+            SendRequestError: If the network request fails
+
+        Example:
+            ```python
+            client.delete(["550e8400-e29b-41d4-a716-446655440000"])
+            print("Secret deleted successfully.")
+            ```
+        """
+
+        if not isinstance(secret_ids, list):
+            raise ValueError("Secret IDs must be a list of strings")
+        if not all(isinstance(sid, str) for sid in secret_ids):
+            raise ValueError("Each secret ID must be a string")
+        if len(secret_ids) == 0:
+            raise ValueError("Secret IDs list cannot be empty")
+
+        try:
+            self._reload_auth()
+
+            response = self.session.post(
+                f"{self.region.api_url}/secrets/delete",
+                json=secret_ids,
+            )
+        except requests.RequestException as e:
+            raise SendRequestError(f"Failed to send delete request: {e}")
+
+        self.raise_errors(response)
+        return self._get_ratelimit_info(response)

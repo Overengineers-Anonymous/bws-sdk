@@ -35,7 +35,7 @@ Example:
     ```
 """
 
-from .bws_types import BitwardenSecret, Region
+from .bws_types import BitwardenSecretResponse, Region
 from .client import BWSecretClient
 from .errors import (
     ApiError,
@@ -57,7 +57,7 @@ __all__ = [
     "AuthError",
     "BWSSDKError",
     "BWSecretClient",
-    "BitwardenSecret",
+    "BitwardenSecretResponse",
     "InvalidIdentityResponseError",
     "InvalidTokenError",
     "Region",
